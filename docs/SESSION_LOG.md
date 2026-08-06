@@ -453,3 +453,35 @@ Two changes to how the app navigates and one to the avatar. Profile, Insights, a
 
 - Same recurring caveat: couldn't screenshot-verify the new full-page layouts or the active-button highlighting in the real running app (login-state limitation of the dev launch, plus the `PrintWindow`-comes-back-black limitation documented in Session 10 — didn't re-attempt it this session, already established as a dead end). Code-reviewed only. Worth a manual pass on all three pages plus the Home button's active state on first load.
 - If a future page ever needs to be reachable from somewhere *other* than the header (e.g. a "View all insights" link from the home screen), the `View` union in `App.tsx` and the `setView` callback are the extension point — no routing library in place, and none seems warranted at this app's size.
+
+---
+
+## Session 12 — Rail Ratio Tweak (65/35)
+
+**Date & Time (IST):** 2026-08-07 01:15 IST
+**Status:** Completed
+
+### What We Built
+
+User feedback: the 60/40 timer/tasks split from Session 10 didn't look right. Adjusted to 65/35.
+
+### How We Built It
+
+- `Timer.tsx`'s grid changed from `grid-cols-[3fr_2fr]` (60/40) to `grid-cols-[13fr_7fr]` (65/35) — one line.
+- Version: `2.2.0` → `2.2.1` (patch — pure visual ratio tweak, explicitly called out by the user as not warranting a minor/major bump).
+
+### In Scope
+
+- The ratio change only.
+
+### Out of Scope
+
+- Everything else about the rail layout — unchanged from Session 10/11.
+
+### Breaking Changes
+
+- NONE.
+
+### Notes for Future Sessions
+
+- Nothing new — same visual-verification limitation as prior sessions applies (not re-documented here, see Session 10/11).

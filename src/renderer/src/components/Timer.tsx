@@ -83,7 +83,7 @@ function Timer({
         : null
 
   return (
-    <div className={`grid min-h-0 flex-1 ${isLongBreak ? '' : 'grid-cols-[3fr_2fr]'}`}>
+    <div className={`grid min-h-0 flex-1 ${isLongBreak ? '' : 'grid-cols-[13fr_7fr]'}`}>
       <div className="flex flex-col items-start justify-center px-12 py-8">
         {isPaused && (
           <span
