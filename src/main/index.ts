@@ -161,7 +161,7 @@ function createTray(): void {
 function createWindow(): void {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 900,
+    width: 960,
     height: 670,
     show: false,
     autoHideMenuBar: true,

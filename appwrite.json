@@ -52,6 +52,18 @@
           "key": "completed",
           "type": "boolean",
           "required": true
+        },
+        {
+          "key": "taskId",
+          "type": "string",
+          "required": false,
+          "size": 255
+        },
+        {
+          "key": "taskTitle",
+          "type": "string",
+          "required": false,
+          "size": 500
         }
       ],
       "indexes": [
@@ -59,6 +71,40 @@
           "key": "by_user_started",
           "type": "key",
           "columns": ["userId", "startedAt"]
+        }
+      ]
+    },
+    {
+      "$id": "tasks",
+      "$permissions": ["create(\"users\")"],
+      "databaseId": "flowstate",
+      "name": "tasks",
+      "enabled": true,
+      "rowSecurity": true,
+      "columns": [
+        {
+          "key": "userId",
+          "type": "string",
+          "required": true,
+          "size": 255
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "size": 500
+        },
+        {
+          "key": "completed",
+          "type": "boolean",
+          "required": true
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_user",
+          "type": "key",
+          "columns": ["userId"]
         }
       ]
     }

@@ -9,3 +9,4 @@ export const tablesDB = new TablesDB(client)
 
 export const DATABASE_ID = 'flowstate'
 export const SESSIONS_TABLE_ID = 'sessions'
+export const TASKS_TABLE_ID = 'tasks'

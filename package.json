@@ -1,6 +1,6 @@
 {
   "name": "flowstate",
-  "version": "1.1.2",
+  "version": "2.0.0",
   "description": "A minimal desktop Pomodoro app for deep work",
   "main": "./out/main/index.js",
   "author": "mridu",
@@ -12,6 +12,7 @@
     "typecheck": "bun run typecheck:node && bun run typecheck:web",
     "start": "node scripts/run-electron-vite.cjs preview",
     "generate-tray-icons": "node scripts/run-generate-tray-icons.cjs",
+    "generate-app-icon": "node scripts/run-generate-app-icon.cjs",
     "dev": "node scripts/run-electron-vite.cjs dev",
     "build": "bun run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",

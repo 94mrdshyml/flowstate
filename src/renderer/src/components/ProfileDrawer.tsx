@@ -52,11 +52,7 @@ function ProfileDrawer({
         </div>
 
         <div className="flex flex-col items-center gap-3 border-b border-fs-divider pb-6">
-          <img
-            src={avatarUrl}
-            alt=""
-            className="h-24 w-24 animate-[fsFloat_3s_ease-in-out_infinite] bg-fs-bg"
-          />
+          <img src={avatarUrl} alt="" className="h-24 w-24 rounded-full bg-fs-bg" />
           <span className="font-heading text-lg font-extrabold">
             {firstName} {lastName}
           </span>

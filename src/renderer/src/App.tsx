@@ -11,6 +11,7 @@ import { useAppUpdate } from './hooks/useAppUpdate'
 import { useAuth } from './hooks/useAuth'
 import { useQuotes } from './hooks/useQuotes'
 import { useSessionHistory } from './hooks/useSessionHistory'
+import { useTasks } from './hooks/useTasks'
 import { useTimer } from './hooks/useTimer'
 import { useTodayStats } from './hooks/useTodayStats'
 import { PHASE_THEME } from './lib/theme'
@@ -19,7 +20,14 @@ import type { TimerSettings } from '../../preload/types'
 
 function App(): React.JSX.Element {
   const { user, loading, login, signup, logout, updatePrefs } = useAuth()
-  const { snapshot, start, pause, resume, skip, reset } = useTimer(user?.$id)
+  const { tasks, activeTaskId, setActiveTaskId, addTask, toggleTask, removeTask } = useTasks(
+    user?.$id
+  )
+  const activeTask = tasks.find((t) => t.$id === activeTaskId)
+  const { snapshot, start, pause, resume, skip, reset } = useTimer(
+    user?.$id,
+    activeTask ? { id: activeTask.$id, title: activeTask.title } : null
+  )
   const quote = useQuotes()
   const todayStats = useTodayStats(user?.$id)
   const { dayCounts, hourCounts } = useSessionHistory(user?.$id)
@@ -97,6 +105,12 @@ function App(): React.JSX.Element {
           onResume={resume}
           onSkip={skip}
           onReset={reset}
+          tasks={tasks}
+          activeTaskId={activeTaskId}
+          onSetActiveTask={setActiveTaskId}
+          onAddTask={addTask}
+          onToggleTask={toggleTask}
+          onRemoveTask={removeTask}
         />
       )}
 

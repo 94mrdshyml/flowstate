@@ -11,7 +11,11 @@ export interface SessionRow extends Models.Row {
   completed: boolean
 }
 
-export async function logSession(userId: string, payload: SessionCompletePayload): Promise<void> {
+export async function logSession(
+  userId: string,
+  payload: SessionCompletePayload,
+  task?: { id: string; title: string }
+): Promise<void> {
   const startedAt = new Date(
     new Date(payload.completedAt).getTime() - payload.durationSeconds * 1000
   ).toISOString()
@@ -27,7 +31,8 @@ export async function logSession(userId: string, payload: SessionCompletePayload
         startedAt,
         endedAt: payload.completedAt,
         durationSeconds: payload.durationSeconds,
-        completed: payload.completed
+        completed: payload.completed,
+        ...(task ? { taskId: task.id, taskTitle: task.title } : {})
       },
       permissions: [Permission.read(Role.user(userId)), Permission.write(Role.user(userId))]
     })
