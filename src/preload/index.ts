@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { PomodoroAPI, SessionCompletePayload, TimerSnapshot } from './types'
+import type {
+  PomodoroAPI,
+  SessionCompletePayload,
+  TimerSnapshot,
+  UpdateStatus,
+  UpdaterAPI
+} from './types'
 
 // Custom APIs for renderer
 const api = {}
@@ -27,6 +33,19 @@ const pomodoro: PomodoroAPI = {
   }
 }
 
+const updater: UpdaterAPI = {
+  getAppVersion: () => ipcRenderer.invoke('app:get-version'),
+  getStatus: () => ipcRenderer.invoke('app:get-update-status'),
+  checkForUpdates: () => ipcRenderer.send('app:check-for-updates'),
+  quitAndInstall: () => ipcRenderer.send('app:quit-and-install'),
+  onStatus: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void =>
+      callback(status)
+    ipcRenderer.on('app:update-status', listener)
+    return () => ipcRenderer.removeListener('app:update-status', listener)
+  }
+}
+
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
 // just add to the DOM global.
@@ -35,6 +54,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
     contextBridge.exposeInMainWorld('pomodoro', pomodoro)
+    contextBridge.exposeInMainWorld('updater', updater)
   } catch (error) {
     console.error(error)
   }
@@ -45,4 +65,6 @@ if (process.contextIsolated) {
   window.api = api
   // @ts-ignore (define in dts)
   window.pomodoro = pomodoro
+  // @ts-ignore (define in dts)
+  window.updater = updater
 }

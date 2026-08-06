@@ -36,3 +36,20 @@ export interface PomodoroAPI {
   onTick: (callback: (snapshot: TimerSnapshot) => void) => () => void
   onSessionComplete: (callback: (payload: SessionCompletePayload) => void) => () => void
 }
+
+export type UpdateState =
+  'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'error'
+
+export interface UpdateStatus {
+  state: UpdateState
+  version?: string
+  error?: string
+}
+
+export interface UpdaterAPI {
+  getAppVersion: () => Promise<string>
+  getStatus: () => Promise<UpdateStatus>
+  checkForUpdates: () => void
+  quitAndInstall: () => void
+  onStatus: (callback: (status: UpdateStatus) => void) => () => void
+}

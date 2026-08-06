@@ -7,6 +7,7 @@ import QuoteBanner from './components/QuoteBanner'
 import SettingsPanel from './components/SettingsPanel'
 import Timer from './components/Timer'
 import { BarChartIcon, GearIcon, UserIcon } from './components/icons'
+import { useAppUpdate } from './hooks/useAppUpdate'
 import { useAuth } from './hooks/useAuth'
 import { useQuotes } from './hooks/useQuotes'
 import { useSessionHistory } from './hooks/useSessionHistory'
@@ -22,6 +23,7 @@ function App(): React.JSX.Element {
   const quote = useQuotes()
   const todayStats = useTodayStats(user?.$id)
   const { dayCounts, hourCounts } = useSessionHistory(user?.$id)
+  const update = useAppUpdate()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -121,6 +123,10 @@ function App(): React.JSX.Element {
           firstName={user.name.split(' ')[0] ?? ''}
           lastName={user.name.split(' ').slice(1).join(' ')}
           email={user.email}
+          appVersion={update.appVersion}
+          updateStatus={update.status}
+          onCheckForUpdates={update.checkForUpdates}
+          onInstallUpdate={update.installUpdate}
           onClose={() => setProfileOpen(false)}
           onLogout={logout}
         />

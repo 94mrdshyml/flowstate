@@ -7,12 +7,18 @@ import trayIdleIcon from '../../resources/tray/tray-idle.png?asset'
 import trayRunningIcon from '../../resources/tray/tray-running.png?asset'
 import trayPausedIcon from '../../resources/tray/tray-paused.png?asset'
 import { PomodoroTimer } from './timer'
-import type { SessionCompletePayload, TimerSettings, TimerSnapshot } from '../preload/types'
+import type {
+  SessionCompletePayload,
+  TimerSettings,
+  TimerSnapshot,
+  UpdateStatus
+} from '../preload/types'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
 let updateReady = false
+let updateStatus: UpdateStatus = { state: 'idle' }
 
 const PHASE_LABEL: Record<TimerSnapshot['phase'], string> = {
   work: 'Work',
@@ -104,11 +110,23 @@ function updateTray(snapshot: TimerSnapshot): void {
   tray.setContextMenu(buildTrayMenu(snapshot))
 }
 
+function setUpdateStatus(status: UpdateStatus): void {
+  updateStatus = status
+  mainWindow?.webContents.send('app:update-status', status)
+}
+
 function setupAutoUpdater(): void {
   if (!app.isPackaged) return
 
-  autoUpdater.on('update-downloaded', () => {
+  autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking' }))
+  autoUpdater.on('update-available', (info) =>
+    setUpdateStatus({ state: 'available', version: info.version })
+  )
+  autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'not-available' }))
+  autoUpdater.on('download-progress', () => setUpdateStatus({ state: 'downloading' }))
+  autoUpdater.on('update-downloaded', (info) => {
     updateReady = true
+    setUpdateStatus({ state: 'downloaded', version: info.version })
     updateTray(timer.getSnapshot())
     if (Notification.isSupported()) {
       new Notification({
@@ -117,7 +135,10 @@ function setupAutoUpdater(): void {
       }).show()
     }
   })
-  autoUpdater.on('error', (error) => console.error('Auto-update failed:', error))
+  autoUpdater.on('error', (error) => {
+    setUpdateStatus({ state: 'error', error: error.message })
+    console.error('Auto-update failed:', error)
+  })
 
   autoUpdater.checkForUpdates()
   setInterval(() => autoUpdater.checkForUpdates(), 6 * 60 * 60 * 1000)
@@ -199,6 +220,19 @@ app.whenReady().then(() => {
     timer.updateSettings(settings)
   )
   ipcMain.handle('pomodoro:get-state', () => timer.getSnapshot())
+
+  ipcMain.handle('app:get-version', () => app.getVersion())
+  ipcMain.handle('app:get-update-status', () => updateStatus)
+  ipcMain.on('app:check-for-updates', () => {
+    if (app.isPackaged) {
+      autoUpdater.checkForUpdates()
+    } else {
+      setUpdateStatus({ state: 'not-available' })
+    }
+  })
+  ipcMain.on('app:quit-and-install', () => {
+    if (updateReady) autoUpdater.quitAndInstall()
+  })
 
   createWindow()
   createTray()

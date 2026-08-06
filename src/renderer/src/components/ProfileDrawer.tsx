@@ -1,17 +1,38 @@
 import { CloseIcon } from './icons'
+import type { UpdateState, UpdateStatus } from '../../../preload/types'
 
 interface ProfileDrawerProps {
   firstName: string
   lastName: string
   email: string
+  appVersion: string
+  updateStatus: UpdateStatus
+  onCheckForUpdates: () => void
+  onInstallUpdate: () => void
   onClose: () => void
   onLogout: () => void
 }
+
+const UPDATE_STATUS_LABEL: Record<UpdateState, string> = {
+  idle: '',
+  checking: 'Checking for updates…',
+  available: 'Update found — downloading…',
+  downloading: 'Downloading update…',
+  downloaded: 'Update ready to install',
+  'not-available': 'You’re up to date',
+  error: 'Couldn’t check for updates'
+}
+
+const CHECKING_STATES: UpdateState[] = ['checking', 'available', 'downloading']
 
 function ProfileDrawer({
   firstName,
   lastName,
   email,
+  appVersion,
+  updateStatus,
+  onCheckForUpdates,
+  onInstallUpdate,
   onClose,
   onLogout
 }: ProfileDrawerProps): React.JSX.Element {
@@ -54,6 +75,32 @@ function ProfileDrawer({
             Email
             <span className="text-sm text-fs-text">{email}</span>
           </label>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-fs-divider pt-6 text-xs text-fs-muted">
+          <div className="flex items-center justify-between">
+            <span>Version {appVersion}</span>
+            <button
+              type="button"
+              onClick={onCheckForUpdates}
+              disabled={CHECKING_STATES.includes(updateStatus.state)}
+              className="text-fs-accent hover:opacity-70 disabled:opacity-40"
+            >
+              Check for updates
+            </button>
+          </div>
+          {UPDATE_STATUS_LABEL[updateStatus.state] && (
+            <span>{UPDATE_STATUS_LABEL[updateStatus.state]}</span>
+          )}
+          {updateStatus.state === 'downloaded' && (
+            <button
+              type="button"
+              onClick={onInstallUpdate}
+              className="mt-1 h-9 w-fit bg-fs-accent px-4 font-heading text-xs font-extrabold text-fs-accent-text"
+            >
+              Restart & install
+            </button>
+          )}
         </div>
 
         <button

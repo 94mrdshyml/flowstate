@@ -283,3 +283,43 @@ Published v1.1.1 (auth-screen width fix + profile avatar fix) as the first real 
 
 - **Release workflow correction**: for any future release, push the version's git tag *before* running `release:win` (`git tag v<X> && git push origin v<X>`), not after. Publishing straight to a non-draft release without the tag existing first will 422 partway through and leave a broken, asset-incomplete release behind that needs manual cleanup (`gh release view v<X>` to check, `gh api -X DELETE repos/94mrdshyml/flowstate/releases/<id>` if it's a stray duplicate).
 - v1.1.1 is now the `Latest` GitHub release with all 3 required assets (`flowstate-1.1.1-setup.exe`, `.blockmap`, `latest.yml`). Whoever has v1.1.0 installed (the one manual install from Session 5) should now receive this OTA automatically within the 6-hour poll window, or immediately on next launch.
+
+---
+
+## Session 8 — In-App Update UI
+
+**Date & Time (IST):** 2026-08-06 23:30 IST
+**Status:** Completed
+
+### What We Built
+
+In-app update status + manual "Check for updates" control, under the Profile drawer. Previously the only surfacing was a native OS notification + a tray menu item once a download finished — no visibility into "checking", "downloading", or "up to date", and no way to trigger a check from inside the app.
+
+### How We Built It
+
+New IPC surface mirroring the existing `pomodoro` bridge pattern exactly (main process owns state, preload exposes a typed API, a renderer hook subscribes):
+
+- `src/preload/types.ts` — `UpdateState` union (`idle | checking | available | downloading | downloaded | not-available | error`), `UpdateStatus` (`{ state, version?, error? }`), `UpdaterAPI` interface.
+- `src/preload/index.ts` / `index.d.ts` — new `window.updater` bridge: `getAppVersion()`, `getStatus()`, `checkForUpdates()`, `quitAndInstall()`, `onStatus(callback)`.
+- `src/main/index.ts` — `setUpdateStatus()` now tracks `updateStatus` module state and broadcasts it (`app:update-status`) to the renderer on every `autoUpdater` event (`checking-for-update`, `update-available`, `update-not-available`, `download-progress`, `update-downloaded`, `error`) — previously only `update-downloaded`/`error` were listened to at all. New handlers: `app:get-version`, `app:get-update-status`, `app:check-for-updates` (falls back to `not-available` in dev, since `checkForUpdates()` has nothing to check against without a published `app-update.yml`), `app:quit-and-install` (only acts if a download actually completed).
+- `src/renderer/src/hooks/useAppUpdate.ts` (new) — same shape as `useTimer.ts`: fetches version/status on mount, subscribes to `onStatus`, exposes `checkForUpdates`/`installUpdate` triggers.
+- `App.tsx` — calls `useAppUpdate()` alongside the other data hooks (matches the existing convention where App.tsx owns all IPC/data hooks and child components stay presentational), passes the result into `ProfileDrawer`.
+- `ProfileDrawer.tsx` — new section under the identity fields, above Log out: current version + a "Check for updates" link-button (disabled while checking/available/downloading), a status line, and — only when `state === 'downloaded'` — a "Restart & install" button calling `quitAndInstall()` directly from the UI (previously only reachable via the tray menu).
+
+### In Scope
+
+- Update status visibility + manual check trigger, surfaced in the Profile drawer per the request.
+
+### Out of Scope
+
+- Download progress percentage — `download-progress` event is wired but only used to flip state to `'downloading'`, not to show a number. Brief said "UI for available update and options to check," not a progress bar; adding one would be scope creep for now.
+- Not published as a release yet — sitting on `master`.
+
+### Breaking Changes
+
+- `ProfileDrawer` now requires 4 new props (`appVersion`, `updateStatus`, `onCheckForUpdates`, `onInstallUpdate`) — only caller is `App.tsx`, already updated.
+
+### Notes for Future Sessions
+
+- Could not visually verify the new Profile-drawer update UI against a real authenticated session this session either (same constraint as Session 4 — the project's own `electron.exe` test launch resolves a different `userData` path than the installed app, so it always lands on the login screen with no session). Did confirm the new IPC surface doesn't break anything: launched the built app and watched devtools console — zero errors, meaning `window.updater.getAppVersion()`/`getStatus()` (which fire unconditionally on mount, even pre-login) found their `ipcMain` handlers fine. The actual drawer UI rendering is code-reviewed, not screenshot-verified.
+- `app:check-for-updates` intentionally short-circuits to `not-available` in dev/unpacked builds rather than calling the real `autoUpdater.checkForUpdates()` — calling it unpacked throws/logs noisily since there's no `app-update.yml`. If testing the real check-in-progress → available → downloading → downloaded flow, it has to be done against a packaged build with a real newer release published.
