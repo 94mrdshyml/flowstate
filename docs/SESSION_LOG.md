@@ -248,3 +248,38 @@ Fixed cramped/truncated input fields on the Login and Signup screens (user repor
 ### Notes for Future Sessions
 
 - This shipped in code but **not yet as a GitHub Release** — if a future session assumes users have this fix, check `git log`/the latest published release tag first, don't assume `master` == what's installed.
+
+---
+
+## Session 7 — Published v1.1.1
+
+**Date & Time (IST):** 2026-08-06 22:45 IST
+**Status:** Completed
+
+### What We Built
+
+Published v1.1.1 (auth-screen width fix + profile avatar fix) as the first real over-the-air release. Also fixed the profile avatar itself: Dicebear's `clay` style only exists under API version `10.x`, not `9.x` — `ProfileDrawer.tsx` was hardcoded to `9.x` (confirmed the bug via `curl`: `9.x/clay/svg` → 404, `10.x/clay/svg` → 200) and is now fixed.
+
+### How We Built It
+
+- `ProfileDrawer.tsx` avatar URL: `9.x` → `10.x`.
+- Bumped `package.json` to `1.1.1`, ran `GH_TOKEN=$(gh auth token) bun run release:win`.
+- **New gotcha found**: GitHub's release API requires the git tag to already exist for a **published** (non-draft) release — only draft creation can defer tag creation. The first `release:win` run hit `422 Validation Failed: "Published releases must have a valid tag"` after uploading the blockmap but before the `.exe`/`latest.yml`, leaving a half-published v1.1.1 release with only the blockmap asset attached. Fix: `git tag v1.1.1 && git push origin v1.1.1` first, then re-run `release:win` — it resumed cleanly and uploaded the missing `.exe` and `latest.yml`.
+- Also found and deleted an orphaned draft release under the `v1.1.0` tag (id `366287490`) — a leftover from Session 5's manual `gh release edit --draft=false`, which apparently created a second release object instead of flipping the original draft in place. The real, asset-complete `v1.1.0` release (id `366287489`) was untouched.
+
+### In Scope
+
+- Publishing v1.1.1, fixing the avatar bug, cleaning up the duplicate v1.1.0 draft.
+
+### Out of Scope
+
+- Nothing deferred.
+
+### Breaking Changes
+
+- NONE.
+
+### Notes for Future Sessions
+
+- **Release workflow correction**: for any future release, push the version's git tag *before* running `release:win` (`git tag v<X> && git push origin v<X>`), not after. Publishing straight to a non-draft release without the tag existing first will 422 partway through and leave a broken, asset-incomplete release behind that needs manual cleanup (`gh release view v<X>` to check, `gh api -X DELETE repos/94mrdshyml/flowstate/releases/<id>` if it's a stray duplicate).
+- v1.1.1 is now the `Latest` GitHub release with all 3 required assets (`flowstate-1.1.1-setup.exe`, `.blockmap`, `latest.yml`). Whoever has v1.1.0 installed (the one manual install from Session 5) should now receive this OTA automatically within the 6-hour poll window, or immediately on next launch.
