@@ -83,7 +83,7 @@ function Timer({
         : null
 
   return (
-    <div className={`grid flex-1 ${isLongBreak ? '' : 'grid-cols-[1fr_260px]'}`}>
+    <div className={`grid min-h-0 flex-1 ${isLongBreak ? '' : 'grid-cols-[3fr_2fr]'}`}>
       <div className="flex flex-col items-start justify-center px-12 py-8">
         {isPaused && (
           <span
@@ -169,15 +169,16 @@ function Timer({
       </div>
 
       {!isLongBreak && (
-        <div className={`flex h-full flex-col border-l px-6 py-8 ${theme.divider}`}>
+        <div className={`flex min-h-0 flex-col border-l px-6 py-8 ${theme.divider}`}>
           {state === 'idle' ? (
             <>
-              <MetaRow label="Phase" value={PHASE_LABEL[phase]} theme={theme} bordered />
-              <MetaRow
-                label="Session"
-                value={`${sessionsCompletedInCycle + 1} / ${sessionsBeforeLongBreak}`}
+              <MetaRowPair
+                left={{ label: 'Phase', value: PHASE_LABEL[phase] }}
+                right={{
+                  label: 'Session',
+                  value: `${sessionsCompletedInCycle + 1} / ${sessionsBeforeLongBreak}`
+                }}
                 theme={theme}
-                bordered
               />
               <MetaRow
                 label="Today"
@@ -188,12 +189,13 @@ function Timer({
             </>
           ) : phase === 'work' ? (
             <>
-              <MetaRow label="Phase" value={PHASE_LABEL[phase]} theme={theme} bordered />
-              <MetaRow
-                label="Session"
-                value={`${sessionsCompletedInCycle + 1} / ${sessionsBeforeLongBreak}`}
+              <MetaRowPair
+                left={{ label: 'Phase', value: PHASE_LABEL[phase] }}
+                right={{
+                  label: 'Session',
+                  value: `${sessionsCompletedInCycle + 1} / ${sessionsBeforeLongBreak}`
+                }}
                 theme={theme}
-                bordered
               />
               <MetaRow
                 label="Next"
@@ -237,6 +239,29 @@ function MetaRow({ label, value, theme, bordered }: MetaRowProps): React.JSX.Ele
   )
 }
 
+interface MetaRowPairProps {
+  left: { label: string; value: string }
+  right: { label: string; value: string }
+  theme: PhaseTheme
+}
+
+function MetaRowPair({ left, right, theme }: MetaRowPairProps): React.JSX.Element {
+  return (
+    <div className={`mb-4 flex gap-6 border-b pb-4 ${theme.divider}`}>
+      <div className="flex-1">
+        <div className={`text-[10px] tracking-wider uppercase ${theme.muted}`}>{left.label}</div>
+        <div className={`mt-1 font-heading text-lg font-extrabold ${theme.text}`}>{left.value}</div>
+      </div>
+      <div className="flex-1">
+        <div className={`text-[10px] tracking-wider uppercase ${theme.muted}`}>{right.label}</div>
+        <div className={`mt-1 font-heading text-lg font-extrabold ${theme.text}`}>
+          {right.value}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface TaskListProps {
   theme: PhaseTheme
   tasks: TaskRow[]
@@ -269,7 +294,7 @@ function TaskList({
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className={`text-[10px] tracking-wider uppercase ${theme.muted}`}>Tasks</div>
 
       <form onSubmit={handleSubmit} className="mt-2 mb-3 flex items-center gap-2">
@@ -289,7 +314,7 @@ function TaskList({
         </button>
       </form>
 
-      <div className="flex flex-col gap-1 overflow-y-auto">
+      <div className="fs-scroll flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
         {openTasks.map((task) => {
           const isActive = task.$id === activeTaskId
           return (

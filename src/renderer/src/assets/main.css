@@ -77,3 +77,21 @@ body {
   user-select: none;
   font-family: var(--font-heading);
 }
+
+.fs-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-fs-divider) transparent;
+}
+
+.fs-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.fs-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fs-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-fs-divider);
+  border-radius: 3px;
+}

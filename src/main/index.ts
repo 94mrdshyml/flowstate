@@ -115,18 +115,41 @@ function setUpdateStatus(status: UpdateStatus): void {
   mainWindow?.webContents.send('app:update-status', status)
 }
 
+function normalizeReleaseNotes(notes: unknown): string | undefined {
+  if (!notes) return undefined
+  if (typeof notes === 'string') return notes || undefined
+  if (Array.isArray(notes)) {
+    const joined = notes
+      .map((entry: { note?: string | null }) => entry.note)
+      .filter((note): note is string => Boolean(note))
+      .join('\n\n')
+    return joined || undefined
+  }
+  return undefined
+}
+
 function setupAutoUpdater(): void {
   if (!app.isPackaged) return
 
   autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking' }))
   autoUpdater.on('update-available', (info) =>
-    setUpdateStatus({ state: 'available', version: info.version })
+    setUpdateStatus({
+      state: 'available',
+      version: info.version,
+      releaseNotes: normalizeReleaseNotes(info.releaseNotes)
+    })
   )
   autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'not-available' }))
-  autoUpdater.on('download-progress', () => setUpdateStatus({ state: 'downloading' }))
+  autoUpdater.on('download-progress', () =>
+    setUpdateStatus({ ...updateStatus, state: 'downloading' })
+  )
   autoUpdater.on('update-downloaded', (info) => {
     updateReady = true
-    setUpdateStatus({ state: 'downloaded', version: info.version })
+    setUpdateStatus({
+      state: 'downloaded',
+      version: info.version,
+      releaseNotes: normalizeReleaseNotes(info.releaseNotes)
+    })
     updateTray(timer.getSnapshot())
     if (Notification.isSupported()) {
       new Notification({

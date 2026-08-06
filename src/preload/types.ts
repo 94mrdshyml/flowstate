@@ -43,6 +43,7 @@ export type UpdateState =
 export interface UpdateStatus {
   state: UpdateState
   version?: string
+  releaseNotes?: string
   error?: string
 }
 

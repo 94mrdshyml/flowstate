@@ -24,6 +24,7 @@ const UPDATE_STATUS_LABEL: Record<UpdateState, string> = {
 }
 
 const CHECKING_STATES: UpdateState[] = ['checking', 'available', 'downloading']
+const NOTES_STATES: UpdateState[] = ['available', 'downloading', 'downloaded']
 
 function ProfileDrawer({
   firstName,
@@ -87,6 +88,16 @@ function ProfileDrawer({
           </div>
           {UPDATE_STATUS_LABEL[updateStatus.state] && (
             <span>{UPDATE_STATUS_LABEL[updateStatus.state]}</span>
+          )}
+          {NOTES_STATES.includes(updateStatus.state) && updateStatus.version && (
+            <div className="mt-1 border-l-2 border-fs-accent pl-2.5">
+              <div className="font-semibold text-fs-text">Version {updateStatus.version}</div>
+              {updateStatus.releaseNotes && (
+                <p className="mt-0.5 whitespace-pre-line text-fs-muted">
+                  {updateStatus.releaseNotes}
+                </p>
+              )}
+            </div>
           )}
           {updateStatus.state === 'downloaded' && (
             <button
