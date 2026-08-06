@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import trayIdleIcon from '../../resources/tray/tray-idle.png?asset'
 import trayRunningIcon from '../../resources/tray/tray-running.png?asset'
@@ -11,6 +12,7 @@ import type { SessionCompletePayload, TimerSettings, TimerSnapshot } from '../pr
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
+let updateReady = false
 
 const PHASE_LABEL: Record<TimerSnapshot['phase'], string> = {
   work: 'Work',
@@ -73,6 +75,9 @@ function buildTrayMenu(snapshot: TimerSnapshot): Menu {
       }
     },
     { type: 'separator' },
+    ...(updateReady
+      ? [{ label: 'Restart & Update', click: () => autoUpdater.quitAndInstall() }]
+      : []),
     {
       label: 'Quit',
       click: () => {
@@ -97,6 +102,25 @@ function updateTray(snapshot: TimerSnapshot): void {
   )
   tray.setToolTip(`Flowstate — ${PHASE_LABEL[snapshot.phase]} — ${stateLabel}`)
   tray.setContextMenu(buildTrayMenu(snapshot))
+}
+
+function setupAutoUpdater(): void {
+  if (!app.isPackaged) return
+
+  autoUpdater.on('update-downloaded', () => {
+    updateReady = true
+    updateTray(timer.getSnapshot())
+    if (Notification.isSupported()) {
+      new Notification({
+        title: 'Update ready',
+        body: 'Restart Flowstate to install it.'
+      }).show()
+    }
+  })
+  autoUpdater.on('error', (error) => console.error('Auto-update failed:', error))
+
+  autoUpdater.checkForUpdates()
+  setInterval(() => autoUpdater.checkForUpdates(), 6 * 60 * 60 * 1000)
 }
 
 function createTray(): void {
@@ -178,6 +202,7 @@ app.whenReady().then(() => {
 
   createWindow()
   createTray()
+  setupAutoUpdater()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

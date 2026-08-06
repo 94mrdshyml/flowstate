@@ -11,6 +11,10 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+publish:
+  provider: github
+  owner: 94mrdshyml
+  repo: flowstate
 win:
   executableName: Flowstate
 nsis:

@@ -1,6 +1,6 @@
 {
   "name": "flowstate",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A minimal desktop Pomodoro app for deep work",
   "main": "./out/main/index.js",
   "author": "mridu",
@@ -17,6 +17,7 @@
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "bun run build && electron-builder --dir",
     "build:win": "bun run build && electron-builder --win",
+    "release:win": "bun run build && electron-builder --win --publish always",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "test": "vitest run",
@@ -25,7 +26,8 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "appwrite": "^26.2.0"
+    "appwrite": "^26.2.0",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
