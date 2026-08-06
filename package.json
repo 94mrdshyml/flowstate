@@ -1,6 +1,6 @@
 {
   "name": "flowstate",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "A minimal desktop Pomodoro app for deep work",
   "main": "./out/main/index.js",
   "author": "mridu",
