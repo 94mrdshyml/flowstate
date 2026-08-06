@@ -37,9 +37,9 @@ function AuthScreen({ onLogin, onSignup }: AuthScreenProps): React.JSX.Element {
     'bg-fs-surface border border-fs-divider px-3 py-2 text-sm text-fs-text outline-none placeholder:text-fs-muted focus:border-fs-accent'
 
   return (
-    <div className="relative flex h-screen w-screen items-center bg-fs-bg text-fs-text">
+    <div className="relative flex h-screen w-screen items-center bg-fs-bg px-24 text-fs-text">
       <div className="absolute inset-x-0 top-0 h-1 bg-fs-accent" />
-      <form onSubmit={handleSubmit} className="flex w-90 flex-col gap-3.5 px-24">
+      <form onSubmit={handleSubmit} className="flex w-full max-w-90 flex-col gap-3.5">
         <span className="mb-3 w-fit border border-fs-accent px-2.5 py-0.5 text-[11px] tracking-wide text-fs-accent">
           FLOWSTATE
         </span>

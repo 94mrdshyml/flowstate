@@ -215,3 +215,36 @@ Over-the-air auto-update, so future releases install themselves instead of the u
 - **`releaseType: release` in `electron-builder.yml` is load-bearing** — if it's ever removed/reverted, publishes silently go back to being GitHub drafts, which are invisible to electron-updater. If a future release doesn't seem to reach users, check `gh release view v<X>` for `draft: false` first.
 - Repo is public (`github.com/94mrdshyml/flowstate`) by explicit user choice — release assets (the installer) aren't sensitive, and this avoids embedding a GitHub token in the shipped app that a private repo would require.
 - Everything else noted at the end of Session 4 (Profile drawer not automated-E2E-verified against a real authenticated session, no automated tests beyond typecheck/lint/build) still stands.
+
+---
+
+## Session 6 — Auth Screen Layout Fix
+
+**Date & Time (IST):** 2026-08-06 21:00 IST
+**Status:** Completed
+
+### What We Built
+
+Fixed cramped/truncated input fields on the Login and Signup screens (user reported "First name"/"Last name" placeholders visibly cut off, e.g. "First nan").
+
+### How We Built It
+
+- Root cause: `AuthScreen.tsx`'s `<form>` had both a fixed `w-90` (360px) width **and** `px-24` (96px each side) padding on itself — the padding ate more than half the form's own width, leaving ~168px for content before the two half-width name inputs and their `gap-3` split it further down to ~78px each. This bug has been present since the Session 2 design-brief rewrite, in both the v1.0.0 and v1.1.0 installers.
+- Fix: moved the `px-24` margin to the outer full-window container (so it works as page margin from the window edge, matching the design brief's left-aligned intent) and changed the form itself to `w-full max-w-90` (fills up to 360px, no internal padding stealing space).
+- Verified visually via a Playwright screenshot of the built `out/` app's login and signup screens — placeholders now render in full, fields are proportionally sized.
+
+### In Scope
+
+- `src/renderer/src/components/AuthScreen.tsx` layout fix only.
+
+### Out of Scope
+
+- Not yet published as a release — sitting on `master`, not shipped via `release:win`. Next release (whenever one goes out) will carry it to users automatically now that OTA is wired (Session 5), but this fix alone hasn't been published yet.
+
+### Breaking Changes
+
+- NONE.
+
+### Notes for Future Sessions
+
+- This shipped in code but **not yet as a GitHub Release** — if a future session assumes users have this fix, check `git log`/the latest published release tag first, don't assume `master` == what's installed.
