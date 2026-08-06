@@ -171,3 +171,47 @@ New Profile drawer, matching the Settings/Insights drawer pattern. Header now ha
 - **Could not exercise the Profile drawer end-to-end via automated Playwright this session.** The project's own `node_modules/electron.exe` (used for `_electron.launch` against `out/`) resolves a different `userData` path than the installed `Flowstate.exe` the user has open (default userData is keyed off `app.getName()`, i.e. package.json `name`, not the installer's `productName` — the two diverge). So the automated launch hit the login screen (confirmed rendering cleanly, zero console errors, `ELECTRON_RUN_AS_NODE` gotcha applied as usual) but had no session to reach Profile with. Typecheck/lint/build are clean and the wiring was reviewed by hand; the user should check the new person icon live via a rebuild/restart to see it rendered.
 - Dicebear calls a live external API (`api.dicebear.com`) — same "external service, fail gracefully" caution as the quotes API (`lib/quotes.ts`) applies here too, though unlike quotes this is just a static `<img src>` so a failed load just shows a broken image, not a crash. Worth a local fallback (initials avatar, etc.) only if this becomes a real complaint.
 - Everything else noted at the end of Session 3 (Login/Signup screens still not automated-E2E-verified, no automated tests beyond typecheck/lint/build) still stands.
+
+---
+
+## Session 5 — OTA Auto-Update
+
+**Date & Time (IST):** 2026-08-06 20:10 IST
+**Status:** Completed
+
+### What We Built
+
+Over-the-air auto-update, so future releases install themselves instead of the user manually running a new installer each time. Also stood up the git repo and GitHub remote this app never had — a prerequisite, not just for this feature.
+
+### How We Built It
+
+- `git init` + public GitHub repo (`https://github.com/94mrdshyml/flowstate`, `gh repo create --public --source=. --remote=origin --push`) — the project had no git history before this session. `.gitignore` was already correct (`node_modules`, `dist`, `out`, `.env` excluded), so the initial commit + push was safe as-is. Local (repo-scoped, not global) `git config user.name` was set to `94mrdshyml` since no name was configured anywhere on the machine — only `user.email` existed globally.
+- `electron-updater` added as a runtime dependency (not dev — it runs in the packaged app).
+- `electron-builder.yml` — new `publish` block: `provider: github`, `owner: 94mrdshyml`, `repo: flowstate`, `releaseType: release`. That last key matters: electron-builder's GitHub publisher defaults to creating **draft** releases even when you pass `--publish always` — `--publish always` only controls *whether* it attempts to publish (bypassing its usual CI-only heuristic), not draft-vs-published. Found this the hard way on the very first publish (release came back `draft: true`, had to `gh release edit v1.1.0 --draft=false` by hand) before adding `releaseType: release` so every future `release:win` publishes straight to a live release, which is what `electron-updater` requires to see it at all.
+- `src/main/index.ts` — `setupAutoUpdater()`, called after `createTray()` inside `app.whenReady()`, guarded by `app.isPackaged` (dev/unpacked runs have no `app-update.yml` to read). Checks once on launch, then every 6 hours via `setInterval` — this is a tray-resident app that can stay running for days, so an on-launch-only check isn't enough. `autoDownload` stays at its default (silent background download). On `update-downloaded`: sets a new module-level `updateReady` flag (same pattern as the existing `isQuitting`), fires a native `Notification` ("Update ready" / "Restart Flowstate to install it."), and refreshes the tray menu. `buildTrayMenu` gets one new conditional item, "Restart & Update" (only rendered when `updateReady`), calling `autoUpdater.quitAndInstall()`. If it's never clicked, `autoInstallOnAppQuit` (electron-updater's default) installs it next time the user quits via the tray's real Quit action — nothing forced mid-session. `autoUpdater`'s `error` event just `console.error`s, matching the existing "external dependency fails silently, never crashes the app" convention already used for the quotes API.
+- `package.json` — new `release:win` script: `bun run build && electron-builder --win --publish always`. To ship a release going forward: bump `version` (semver), then `GH_TOKEN=$(gh auth token) bun run release:win`. The token is sourced fresh from the already-authenticated `gh` CLI for that one command only — never written to disk or committed.
+- Bumped to **1.1.0** (bundles this + Session 4's Profile drawer) and published it — confirmed live at `github.com/94mrdshyml/flowstate/releases/tag/v1.1.0` with `flowstate-1.1.0-setup.exe` + `latest.yml` attached.
+
+### In Scope
+
+- Windows auto-update via `electron-updater` + GitHub Releases (public repo).
+- Git repo + GitHub remote setup (didn't exist before this session).
+- First OTA-capable release (1.1.0) built and published.
+
+### Out of Scope
+
+- macOS/Linux auto-update — mac requires a paid Apple code-signing cert for `electron-updater` to work at all (unsigned builds can't self-update); not set up. The existing mac/linux targets in `electron-builder.yml` are untouched but not wired for OTA.
+- Any in-app "checking for update" UI — kept to native `Notification` + tray menu only, no renderer/IPC changes.
+- `dev-app-update.yml` for local dev-mode update testing — dev tooling, not needed to ship OTA to the user.
+
+### Breaking Changes
+
+- NONE to app behavior. Structural: this is the project's first git commit — anyone continuing this work should now `git pull`/branch instead of just editing the working copy.
+
+### Notes for Future Sessions
+
+- **The currently-running installed app (v1.0.0) has no updater code and can never auto-update itself to 1.1.0 or anything else** — that jump requires one manual install of `dist\flowstate-1.1.0-setup.exe`. This was flagged to the user at plan time and again at hand-off; every release *after* 1.1.0 is the first one that will actually arrive OTA. Confirm with the user whether they've done that manual install before assuming OTA is "live" for them.
+- **Release workflow going forward**: bump `version` in `package.json`, run `GH_TOKEN=$(gh auth token) bun run release:win`. Do not forget the version bump — electron-updater compares `latest.yml`'s version against the installed app's version, so republishing the same version number won't be detected as an update.
+- **`releaseType: release` in `electron-builder.yml` is load-bearing** — if it's ever removed/reverted, publishes silently go back to being GitHub drafts, which are invisible to electron-updater. If a future release doesn't seem to reach users, check `gh release view v<X>` for `draft: false` first.
+- Repo is public (`github.com/94mrdshyml/flowstate`) by explicit user choice — release assets (the installer) aren't sensitive, and this avoids embedding a GitHub token in the shipped app that a private repo would require.
+- Everything else noted at the end of Session 4 (Profile drawer not automated-E2E-verified against a real authenticated session, no automated tests beyond typecheck/lint/build) still stands.
