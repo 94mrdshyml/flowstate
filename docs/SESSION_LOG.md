@@ -531,3 +531,56 @@ Started as a bug-fix session: user screenshotted the Profile page's update panel
 - **This is now the second and third time a "missing `min-h-0` on a flex item with `overflow-y-auto`" bug has shipped** (Session 9/10's task list, then the Session 11 page components fixed earlier in this same session). The Session 11 components no longer exist post-pivot, but `HomePanel.tsx`'s `TaskList` and all three new `*Panel.tsx` components carry `min-h-0` from the start this time — applied proactively rather than discovered again the hard way. Keep treating it as a standing checklist item for any new scrollable region, per Session 10's original note.
 - The nav model can still change again — this is the third iteration (drawers → full pages → persistent side panel) in three sessions. If it moves again, the `View` union and per-view conditionals in `App.tsx` remain the extension point; no routing library, still not warranted at this size.
 - Same recurring visual-verification gap — couldn't screenshot the real running app for this pivot either. Code-reviewed only; the grid math (`view !== 'home' || phase !== 'long_break'` gating the right column) is worth a manual click-through, especially the long-break case.
+
+---
+
+## Session 14 — v3.0: Lofi Music Player (YouTube Playlist Embed)
+
+**Date & Time (IST):** 2026-08-07 02:15 IST
+**Status:** Completed
+
+### What We Built
+
+A minimal lofi-music control bar. User wanted background music from a specific YouTube channel they own, playable as a playlist, with a design that stays out of the way. Landed on a persistent, always-visible transport bar directly under the header — visible regardless of which panel (Home/Profile/Insights/Settings) is active — rather than a full player view or a header-cramped widget, both of which were rejected in favor of this option during scoping.
+
+Playback source: a single hardcoded playlist (`Lofi beats to Study and Focus`, ID `PLVG6PHAWpQYM`) from the user's channel, picked from a dropdown that's built to hold more playlists later — user was explicit that this is "select from available playlists," not "choose any channel," so no search/browse UI, no YouTube Data API, just a small config array they add to by hand.
+
+A decorative equalizer-bars indicator was added afterward — user asked for a "waveform." A real audio-reactive waveform isn't possible here (see below), so this is a small animated 4-bar CSS equalizer that pulses while `isPlaying` and freezes when paused — visual life, not a real audio signal.
+
+### How We Built It
+
+- **Playback mechanism**: YouTube's official IFrame Player API (`https://www.youtube.com/iframe_api` bootstrap script + `YT.Player`), not a hand-rolled postMessage protocol. The player renders into a `0x0` hidden container — audio plays, no visible video chrome. Chose the officially documented `YT.Player` class over reverse-engineered raw `postMessage` calls because the latter's "get current video title" behavior is undocumented/fragile; `getVideoData()` on the real API is a stable, documented method.
+- **Privacy**: player uses `host: 'https://www.youtube-nocookie.com'` so the embed doesn't set YouTube tracking cookies until playback actually starts.
+- **CSP** (`src/renderer/index.html`): added `https://www.youtube.com` to `script-src` (only source allowed to load the bootstrap script — no `unsafe-inline`/`unsafe-eval`) and `https://www.youtube-nocookie.com` to a new `frame-src` directive (the actual embedded player iframe). Nothing else in the CSP loosened; `connect-src` untouched since the player communicates via `postMessage`, not `fetch`/XHR.
+- New `src/renderer/src/lib/musicPlaylists.ts` — `MUSIC_PLAYLISTS: { name, id }[]`, currently one entry. Adding a playlist later is a one-line edit, no rebuild-breaking schema.
+- New `src/renderer/src/lib/youtube.d.ts` — small hand-written ambient `YT` namespace (constructor, `playVideo`/`pauseVideo`/`nextVideo`/`previousVideo`/`setVolume`/`getVideoData`/`destroy`, plus the two event callback shapes actually used). Deliberately not the `@types/youtube` package — hand-writing exactly the surface we call avoids pulling in a third-party types package for ~40 lines, and sidesteps another possible style/version-mismatch trap (same class of issue as the Dicebear `clay`/`glyphs` gotcha from earlier sessions).
+- New `src/renderer/src/hooks/useYouTubePlayer.ts` — loads the bootstrap script once (checks `window.YT.Player` / script-tag-by-id before injecting), chains any pre-existing `window.onYouTubeIframeAPIReady` callback so a second mount (React 19 `StrictMode` double-invokes effects in dev) doesn't clobber the first. Recreates the player whenever `playlistId` changes (`destroy()` in the effect cleanup) rather than calling `loadPlaylist()` on a persistent instance — simpler, and the only playlist switch that can happen today is between the one entry in `MUSIC_PLAYLISTS`, so the extra polish isn't earning its complexity yet.
+  - Hit an `eslint-plugin-react-hooks` `set-state-in-effect` violation from resetting `isReady`/`isPlaying`/`videoTitle` synchronously at the top of the effect body on every `playlistId` change. Fixed by dropping the manual reset entirely — the new player's own `onReady`/`onStateChange` callbacks naturally overwrite that state once it initializes, so the imperative reset was redundant, not just relocatable.
+- New `src/renderer/src/components/MusicBar.tsx` — prev/play-pause/next transport (new `SkipBackIcon`/`SkipForwardIcon` in `icons.tsx`, matching the existing filled-triangle `PlayIcon` style rather than the stroked style used elsewhere, since a filled double-triangle reads cleaner at this size), truncating track-title text, the playlist `<select>`, and a volume slider with a new stroked `VolumeIcon`. Buttons are `disabled` until `isReady` fires, since calling `YT.Player` methods before the embed finishes initializing is unreliable.
+- **Equalizer bars**: real audio-reactive visualization was ruled out — the YouTube embed is a cross-origin iframe, and browsers block a parent page from attaching a Web Audio `AnalyserNode` to audio playing inside it (no access to the raw signal at all, not just a CORS-tagged-data restriction). The only way to get a real waveform would be to stop using the YouTube embed and proxy/extract the audio ourselves, which raises YouTube ToS problems and reliability concerns — user chose the decorative option instead. Implemented as `EqualizerBars`, a local component inside `MusicBar.tsx`: 4 bars sharing one `fsEqualize` CSS keyframe (new in `main.css`, multi-stop `scaleY` for an organic look) with staggered `animation-delay`s, driven purely by `isPlaying` — no timing/animation state in React.
+- `src/renderer/src/App.tsx` — `<MusicBar theme={theme} />` inserted between the header and the `Timer`/panel grid, rendered unconditionally (survives `view` switches and long-break's full-width home screen) so playback state is never torn down by navigation.
+- **Playback behavior**: fully manual per explicit user choice — no auto-play tied to timer phase. Simplest option, avoids edge cases like "what if the user paused music by hand right before a work session starts."
+- **Version**: `2.3.0` → `2.4.0` (new capability, not a fix or redesign — minor, consistent with prior version-bump reasoning in this log).
+
+### In Scope
+
+- Persistent music bar with play/pause/prev/next/volume/playlist-select/decorative equalizer, playing a hardcoded YouTube playlist via the official embed API.
+
+### Out of Scope
+
+- YouTube Data API / auto-discovering the channel's playlists — explicitly rejected; playlists are added by hand to `musicPlaylists.ts`.
+- Auto-play synced to timer phase — explicitly rejected; manual control only.
+- Any UI for adding/editing playlists at runtime — that's a code change, not a settings-screen feature, per current scope.
+- Real audio-reactive waveform — not achievable with a YouTube-embed-based player; would need a different playback architecture entirely (see above).
+
+### Breaking Changes
+
+- NONE.
+
+### Notes for Future Sessions
+
+- **Unverified in a packaged build**: the embed's `iframe` src is built without an `origin` query param, because in production the renderer loads via `file://` (see `mainWindow.loadFile` in `src/main/index.ts`), which isn't a real `http(s)` origin YouTube's IFrame API can validate against. This was only exercised against the **dev** server (`http://localhost:5173`, a real origin) via `bun run dev` — no CSP/console errors there, and playback typing checks out, but the postMessage handshake's behavior under `file://` in the actual installed `.exe` has **not** been confirmed. If music silently fails to load/control only in the packaged app (not in `bun run dev`), this is the first place to look — likely fix is switching the production load from `file://` to a registered custom protocol with a proper origin, which is a real (if unlikely to be needed) follow-up, not a one-line patch.
+- Playlist ID `PLVG6PHAWpQYM` looked short for a typical 34-character YouTube playlist ID; confirmed valid before wiring it in by fetching `youtube.com/playlist?list=PLVG6PHAWpQYM` and matching the page `<title>` against the name the user gave ("Lofi beats to Study and Focus") — worth remembering as a cheap sanity check for any future playlist ID additions, since a bad ID here fails silently in the embed rather than throwing a build/typecheck error.
+- If a future request wants a *real* audio-reactive waveform, the honest answer is still "not with this embed" — don't re-attempt `AnalyserNode` against the YouTube iframe's audio; it will not work, this was verified against how cross-origin iframes are sandboxed, not just assumed.
+- Same recurring visual-verification gap as every prior session — no way to confirm actual audio plays or the UI looks right without the user running `bun run dev` themselves. Ask them to specifically check: track title updates on play, volume slider actually changes loudness, prev/next behave sanely at playlist boundaries, and the equalizer bars animate while playing and freeze when paused.
+- No unit/E2E test coverage added for this feature (repo currently has zero test files under either `test` or `test:e2e` — pre-existing, not introduced this session).

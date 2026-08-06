@@ -211,6 +211,43 @@ export function ArrowLeftIcon({ className }: IconProps): React.JSX.Element {
   )
 }
 
+export function SkipForwardIcon({ className }: IconProps): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className={className}>
+      <path d="M4 5l7 7-7 7Z" />
+      <path d="M12 5l7 7-7 7Z" />
+      <rect x="19" y="5" width="2" height="14" />
+    </svg>
+  )
+}
+
+export function SkipBackIcon({ className }: IconProps): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className={className}>
+      <rect x="3" y="5" width="2" height="14" />
+      <path d="M20 5l-7 7 7 7Z" />
+      <path d="M12 5l-7 7 7 7Z" />
+    </svg>
+  )
+}
+
+export function VolumeIcon({ className }: IconProps): React.JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+      <path d="M16.5 8.5a5 5 0 0 1 0 7" />
+    </svg>
+  )
+}
+
 export function HomeIcon({ className }: IconProps): React.JSX.Element {
   return (
     <svg

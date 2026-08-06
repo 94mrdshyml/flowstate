@@ -1,9 +1,10 @@
-import { PHASE_THEME } from '../lib/theme'
+import { PHASE_THEME, type PhaseTheme } from '../lib/theme'
 import { ArrowRightIcon, PauseIcon, PlayIcon, SkipIcon } from './icons'
 import type { TimerSnapshot } from '../../../preload/types'
 
 interface TimerProps {
   snapshot: TimerSnapshot
+  musicPlaying: boolean
   onStart: () => void
   onPause: () => void
   onResume: () => void
@@ -17,6 +18,38 @@ const IDLE_CTA_LABEL: Record<TimerSnapshot['phase'], string> = {
   long_break: 'Start break'
 }
 
+const BAR_DELAY_CLASSES = [
+  '[animation-delay:0s]',
+  '[animation-delay:0.15s]',
+  '[animation-delay:0.3s]',
+  '[animation-delay:0.45s]'
+]
+
+function EqualizerBars({
+  active,
+  theme
+}: {
+  active: boolean
+  theme: PhaseTheme
+}): React.JSX.Element {
+  return (
+    <div
+      className="absolute bottom-8 left-12 flex h-10 items-end gap-1.5 opacity-20"
+      aria-hidden="true"
+    >
+      {BAR_DELAY_CLASSES.map((delayClass, i) => (
+        <div
+          key={i}
+          style={{ transformOrigin: 'bottom' }}
+          className={`w-1 rounded-sm ${theme.ring} ${
+            active ? `h-10 animate-[fsEqualize_0.9s_ease-in-out_infinite] ${delayClass}` : 'h-2.5'
+          }`}
+        />
+      ))}
+    </div>
+  )
+}
+
 function formatTime(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
@@ -25,6 +58,7 @@ function formatTime(totalSeconds: number): string {
 
 function Timer({
   snapshot,
+  musicPlaying,
   onStart,
   onPause,
   onResume,
@@ -58,7 +92,7 @@ function Timer({
         : null
 
   return (
-    <div className="flex flex-col items-start justify-center px-12 py-8">
+    <div className="relative flex flex-col items-start justify-center px-12 py-8">
       {isPaused && (
         <span
           className={`mb-2 border px-2.5 py-0.5 text-[10px] uppercase tracking-wider ${theme.text} ${theme.divider}`}
@@ -140,6 +174,8 @@ function Timer({
           Reset
         </button>
       )}
+
+      <EqualizerBars active={musicPlaying} theme={theme} />
     </div>
   )
 }

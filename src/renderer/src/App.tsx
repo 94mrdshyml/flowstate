@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AuthScreen from './components/AuthScreen'
 import Greeting from './components/Greeting'
 import HomePanel from './components/HomePanel'
 import InsightsPanel from './components/InsightsPanel'
+import MusicBar from './components/MusicBar'
 import ProfilePanel from './components/ProfilePanel'
 import QuoteBanner from './components/QuoteBanner'
 import SettingsPanel from './components/SettingsPanel'
@@ -15,8 +16,10 @@ import { useSessionHistory } from './hooks/useSessionHistory'
 import { useTasks } from './hooks/useTasks'
 import { useTimer } from './hooks/useTimer'
 import { useTodayStats } from './hooks/useTodayStats'
+import { useYouTubePlayer } from './hooks/useYouTubePlayer'
 import { PHASE_THEME } from './lib/theme'
 import { mergeSettings } from './lib/settings'
+import { MUSIC_PLAYLISTS } from './lib/musicPlaylists'
 import type { TimerSettings } from '../../preload/types'
 
 type View = 'home' | 'profile' | 'insights' | 'settings'
@@ -36,6 +39,9 @@ function App(): React.JSX.Element {
   const { dayCounts, hourCounts } = useSessionHistory(user?.$id)
   const update = useAppUpdate()
   const [view, setView] = useState<View>('home')
+  const [playlistId, setPlaylistId] = useState(MUSIC_PLAYLISTS[0].id)
+  const musicContainerRef = useRef<HTMLDivElement>(null)
+  const music = useYouTubePlayer(musicContainerRef, playlistId)
 
   useEffect(() => {
     if (!user) return
@@ -111,6 +117,14 @@ function App(): React.JSX.Element {
         </div>
       </div>
 
+      <MusicBar
+        theme={theme}
+        playlistId={playlistId}
+        onPlaylistChange={setPlaylistId}
+        containerRef={musicContainerRef}
+        music={music}
+      />
+
       {snapshot && (
         <div
           className={`grid min-h-0 flex-1 ${
@@ -119,6 +133,7 @@ function App(): React.JSX.Element {
         >
           <Timer
             snapshot={snapshot}
+            musicPlaying={music.isPlaying}
             onStart={start}
             onPause={pause}
             onResume={resume}
