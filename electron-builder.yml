@@ -15,6 +15,7 @@ publish:
   provider: github
   owner: 94mrdshyml
   repo: flowstate
+  releaseType: release
 win:
   executableName: Flowstate
 nsis:
