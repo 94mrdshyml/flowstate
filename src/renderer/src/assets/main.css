@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-fs-bg: #f3f2f2;
+  --color-fs-surface: #eae9e9;
+  --color-fs-text: #201e1d;
+  --color-fs-muted: rgba(32, 30, 29, 0.55);
+  --color-fs-divider: rgba(32, 30, 29, 0.4);
+
+  --color-fs-accent: #ec3013;
+  --color-fs-accent-text: #f3f2f2;
+  --color-fs-accent-600: #dd2b0f;
+  --color-fs-accent-700: #ae1800;
+  --color-fs-accent-100: #fff2ef;
+  --color-fs-error: #ae1800;
+
+  --color-fs-shortbreak-bg: #201e1d;
+  --color-fs-shortbreak-text: #f3f2f2;
+  --color-fs-shortbreak-ring: #f3f2f2;
+  --color-fs-shortbreak-divider: rgba(255, 255, 255, 0.25);
+
+  --color-fs-longbreak-bg: #ec3013;
+  --color-fs-longbreak-text: #f3f2f2;
+  --color-fs-longbreak-ring: #f3f2f2;
+
+  --font-heading: 'Archivo', system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-fs-bg: #2d2b2b;
+    --color-fs-surface: #444141;
+    --color-fs-text: #f8f4f4;
+    --color-fs-muted: rgba(248, 244, 244, 0.55);
+    --color-fs-divider: rgba(248, 244, 244, 0.35);
+
+    --color-fs-accent: #ff9783;
+    --color-fs-accent-text: #2d2b2b;
+    --color-fs-accent-600: #ff563c;
+    --color-fs-accent-700: #dd2b0f;
+    --color-fs-accent-100: #4d170e;
+    --color-fs-error: #ffc4b8;
+
+    --color-fs-shortbreak-bg: #f8f4f4;
+    --color-fs-shortbreak-text: #201e1d;
+    --color-fs-shortbreak-ring: #201e1d;
+    --color-fs-shortbreak-divider: rgba(32, 30, 29, 0.2);
+
+    --color-fs-longbreak-bg: #ec3013;
+    --color-fs-longbreak-text: #f8f4f4;
+    --color-fs-longbreak-ring: #f8f4f4;
+  }
+}
+
+@keyframes fsPulse {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes fsFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+body {
+  user-select: none;
+  font-family: var(--font-heading);
+}

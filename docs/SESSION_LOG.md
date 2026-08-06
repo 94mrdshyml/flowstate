@@ -1,0 +1,173 @@
+---
+
+## Session 1 — Initial Build: Auth, Timer Engine, Insights
+
+**Date & Time (IST):** 2026-08-05 22:30 IST
+**Status:** Completed
+
+### What We Built
+
+Full working v1 of Flowstate, a minimal desktop Pomodoro app: Appwrite email/password auth (with first/last name split into a single `name` field), a main-process-authoritative timer state machine (work → short break → long break, configurable cadence) with tray icon and native OS notifications, gentle synthesized chime sounds on every phase transition, a settings panel backed by Appwrite user Preferences, a rotating motivational quote banner (5–10 min interval), a time-of-day greeting, per-session logging to Appwrite with per-user row permissions, a today's-stats panel, a GitHub-style session heatmap (~1 year, paginated query), and a most-focused-hour insight — all styled with Tailwind v4, following the OS light/dark theme automatically. Packaged into a Windows installer via electron-builder.
+
+### How We Built It
+
+- **Scaffold**: `@quick-start/electron` (react-ts template) via `bun create`, then layered Tailwind v4 (`@tailwindcss/vite`), Vitest, Playwright, and the Appwrite SDK on top. Package manager is bun throughout — `bun run dev`/`start` route through `scripts/run-electron-vite.cjs` instead of calling `electron-vite` directly, because VS Code's integrated terminal sets `ELECTRON_RUN_AS_NODE=1` in the environment, which is inherited by any spawned Electron process; Electron's native bootstrap checks only whether that key _exists_ (not its value), so blanking it (`VAR=`) doesn't fix it — the script fully `delete`s it from `process.env` before spawning `electron-vite`. Documented in `CLAUDE.md` gotchas.
+- **Appwrite**: modern `tablesDB`/`tables`/`columns` API (not the legacy `databases`/`collections` — confirmed via the installed `appwrite` SDK's `types/services/tables-db.d.ts` and the `appwrite-cli`'s bundled zod schema for `appwrite.json`, since the CLI explicitly marks `databases` as "(Legacy)"). Schema lives in `appwrite.json` (database `flowstate`, table `sessions` with `rowSecurity: true`); user ran `appwrite-cli login` + `push tablesdb` themselves against their own Appwrite Cloud project — this session never touched their API key/credentials. Row-level permissions (`Permission.read/write(Role.user(userId))`) are set per-row at write time in `src/renderer/src/lib/sessions.ts`, not at the table level (table only grants `create` to any authenticated user).
+- **Timer engine**: `src/main/timer.ts` (`PomodoroTimer` class) is the sole source of truth, ticking via `setInterval` in the main process so it keeps running when the window is hidden. IPC contract (`src/preload/types.ts`): renderer calls `start/pause/resume/skip/reset/updateSettings/getState`; main pushes `tick` and `session-complete` events. Phases do **not** auto-chain — each phase ends by returning to `idle` with the next phase loaded, awaiting an explicit `Start` click (matches `docs/DESIGN_PROMPT.md`'s idle-state framing). `skip()` and natural completion both fire `session-complete` with a `completed: boolean` flag and a `nextPhase`, which both the native notification (main process) and the sound choice (renderer) key off of.
+- **Tray**: closing the window hides it instead of quitting (`mainWindow.on('close', ...)` + `isQuitting` flag, only flipped by the tray's own Quit item or `before-quit`) — this is a tray-resident app by design.
+- **Sounds**: real audio files weren't available, so a throwaway Node script (scratchpad only, not part of this repo) procedurally synthesized 3 short bell-tone WAV files (harmonics + exponential decay, not flat sine beeps — first attempt was rejected as too harsh) directly into `src/renderer/src/assets/sounds/`. **User said they'll supply real sound files later** — same filenames, just swap the WAV contents; there's no generator script in the repo to regenerate them.
+- **Quotes**: `dummyjson.com/quotes/random`, chosen after `quotable.io` (the obvious default) turned out to be dead, and after verifying CORS behavior directly with `curl` — `dummyjson.com` reflects `Access-Control-Allow-Origin` for any `Origin` header including `null` (which is what the packaged app's `file://`-loaded renderer sends), so it works in both dev and production.
+- **Heatmap + focus-hour insight** share one paginated query (`getSessionHistory` in `src/renderer/src/lib/stats.ts`, cursor-paginated via `Query.cursorAfter` since a year of data can exceed one page) instead of two separate fetches, bucketing into both day-counts and hour-counts in a single pass.
+- **CSP**: `src/renderer/index.html`'s `connect-src` explicitly allowlists `https://sgp.cloud.appwrite.io` and `https://dummyjson.com` — adding any new external API later needs a matching CSP update or it'll silently fail.
+- **Theming**: Tailwind v4's default `dark:` variant (`prefers-color-scheme` media query, no config needed) — no manual toggle, per the approved design brief.
+- **Packaging**: `bun run build:win` → `dist/flowstate-1.0.0-setup.exe` (NSIS, unsigned — no code-signing cert configured, so Windows SmartScreen may warn on first install; expected for a personal-use app).
+
+### In Scope
+
+- Everything in `docs/PLAN.md`'s (the original approved plan, not copied into this repo) 12-step build sequence: scaffold, Appwrite integration, timer engine, settings, notifications/sound, quotes, greeting, session logging, stats, heatmap, focus-hour insight, packaging.
+- Extras requested mid-session: app rename to "Flowstate", password show/hide toggle (icon, not text), light/dark mode, a detailed design brief (`docs/DESIGN_PROMPT.md`) for an external design pass, a light visual-consistency pass (moved Log out to a fixed top-left corner mirroring Settings, grouped Stats/Heatmap/Focus-hour into one bordered section, normalized muted-text/hover color classes across all screens).
+
+### Out of Scope
+
+- Real (non-synthesized) notification sounds — user is supplying their own.
+- Any visual redesign beyond the light consistency pass — deliberately deferred until the user runs `docs/DESIGN_PROMPT.md` through a separate design pass, to avoid freehanding work that gets overwritten.
+- Automated tests (Vitest unit tests, Playwright E2E) — none written yet despite being configured in `package.json`. The Definition of Done in `CLAUDE.md` lists `bun run test` / `bun run test:e2e` as required; they currently pass trivially only because no test files exist yet (`vitest run` would report zero tests).
+- macOS/Linux packaging — only `build:win` was run and verified; `build:mac`/`build:linux` scripts exist but are untested (this session ran on Windows).
+- Code signing for the Windows installer.
+
+### Breaking Changes
+
+- NONE — first session, greenfield project.
+
+### Notes for Future Sessions
+
+- **No automated tests exist yet.** This is the biggest gap against `CLAUDE.md`'s own Definition of Done. Next session touching this codebase should either write initial Vitest/Playwright coverage or explicitly flag continuing without it.
+- **Sound files are placeholders.** `src/renderer/src/assets/sounds/{session-start,break-start,long-break-start}.wav` are synthesized bell tones. When the user supplies real files, just replace the WAV contents at those same paths — no code changes needed.
+- **`appwrite.json` uses the modern `tablesDB`/`tables` schema**, not the legacy `databases`/`collections` the `appwrite-cli` help text still shows first. If a future session needs to add a column/table, follow the existing `tablesDB`/`tables`/`columns` shape in `appwrite.json`, not the legacy one — mixing the two schemas in one file is possible per the CLI's zod schema but untested here.
+- **`docs/DESIGN_PROMPT.md` exists and hasn't been acted on yet.** If the user comes back with design output from running that prompt elsewhere, the next session's job is reconciling that against the current (functional-but-unstyled-beyond-basics) UI.
+- **Timer phases require manual Start between each one** — this was a deliberate decision (see How We Built It) to match the design brief's idle-state framing, not an oversight. Don't "fix" this into auto-chaining without checking with the user first.
+- **`ELECTRON_RUN_AS_NODE`** — see `CLAUDE.md` gotchas. If `bun run dev`/`start` ever crash with `Cannot read properties of undefined (reading 'isPackaged')`, this is almost certainly why. Fix lives in `scripts/run-electron-vite.cjs`; don't bypass it.
+- **Env vars**: `.env` holds `VITE_APPWRITE_ENDPOINT` and `VITE_APPWRITE_PROJECT_ID` (both public-safe client config, not secrets — see `CLAUDE.md` Security Rules). `.env.example` mirrors the keys with empty values for reference. No other env vars/secrets exist.
+- **Installer is unsigned.** If this ever needs wider distribution (not just this user's own machine), code signing becomes a real requirement — currently out of scope for a personal app.
+
+---
+
+## Session 2 — Implement Approved Design Brief (Modernist System)
+
+**Date & Time (IST):** 2026-08-06 15:30 IST
+**Status:** Completed
+
+### What We Built
+
+Full visual reconciliation of the app against the design pass that came back from `docs/DESIGN_PROMPT.md`: a Claude Design project ("Organic timer design system") containing `Flowstate Design Brief.dc.html`, built on a mono-accent, zero-radius, Archivo-typeface "Modernist" system. Every screen the brief covers was rewritten to match: auth (login/signup), loading, header/greeting, all 5 timer phase×state combinations, quote banner, settings, and stats/heatmap/focus-hour insights. Two behavioral changes came with it, both explicitly confirmed with the user beforehand: Settings and Stats/Heatmap/Focus-hour became icon-triggered right-side drawers (were: a centered modal and an always-visible section), and break states now recolor the **entire window field** (not just the timer ring) — short break inverts to the opposite theme's neutral, long break becomes a solid accent "poster" field. Also generated real 3-state tray icon art (idle/running/paused) to replace the plain resized app icon, and tuned native notification copy to the brief's calmer tone.
+
+### How We Built It
+
+- **Design tokens, not a second CSS system**: rather than importing the design-system bundle's own `styles.css` (`.btn`/`.input`/`.card` classes), ported its color/font values into Tailwind v4 `@theme` custom properties in `src/renderer/src/assets/main.css`, prefixed `--color-fs-*`. Dark mode redefines the same properties inside `@media (prefers-color-scheme: dark)` — same zero-config mechanism the app already used, just applied to named tokens instead of per-utility `dark:` pairs. Every component still writes plain Tailwind utility classes (`bg-fs-bg`, `text-fs-text`, etc.) — zero custom CSS classes added, matching the codebase's existing 100%-Tailwind convention.
+- **Phase-color theming**: new `src/renderer/src/lib/theme.ts` exports `PHASE_THEME: Record<Phase, PhaseTheme>` (bg/text/muted/mutedBg/divider/trackBg/ring/ringText class strings per phase) and `getNextPhase()` (pure function mirroring `PomodoroTimer.completePhase`'s branching in `src/main/timer.ts`, for the running-screen's "Next" meta row — no IPC/preload changes needed, fully derivable from the existing `TimerSnapshot`). `App.tsx` computes the theme once from `snapshot?.phase` and threads it into `Greeting`, `Timer`, `QuoteBanner`, and the header icon buttons so the whole window recolors consistently. Recolor is driven purely by `phase`, independent of `state` — idle/running/paused within a phase only vary text/progress dimming, never background.
+- **Font**: Archivo via Google Fonts `@import` in `main.css`; required a CSP update in `src/renderer/index.html` (`style-src` gained `https://fonts.googleapis.com`, added `font-src 'self' https://fonts.gstatic.com`) — same "adding an external host needs a matching CSP update" gotcha as the Appwrite/dummyjson hosts.
+- **Icons**: `src/renderer/src/components/icons.tsx` standardized on the brief's convention (24x24 viewBox, `stroke-width 2`, was 20x20/1.5) and gained `CloseIcon`, `CheckIcon`, `PlayIcon`, `PauseIcon`, `SkipIcon`, `ArrowRightIcon`, `BarChartIcon`.
+- **New component**: `InsightsDrawer.tsx` composes the restyled `StatsPanel` + `Heatmap` + `FocusHourInsight` behind the new header bar-chart icon. `SettingsPanel.tsx` was edited in place (not renamed) to become the matching right-side drawer — dropped the `setTimeout(onClose, 600)` auto-close in favor of a persistent "Saved" row dismissed manually via the close icon, and gained an `onLogout` prop since the brief's clean header has no room for the old fixed-corner Log out link — it now lives at the bottom of the Settings drawer.
+- **Reset control**: kept (not depicted in any of the 16 brief screens, but it's live functionality that wasn't asked to be removed) — restyled as a small ghost link near the timer controls.
+- **Tray icons**: `scripts/generate-tray-icons.mjs` (run via `bun run generate-tray-icons`, wrapped by `scripts/run-generate-tray-icons.cjs` for the same `ELECTRON_RUN_AS_NODE` fix as `run-electron-vite.cjs`) launches an **offscreen** `BrowserWindow` (`webPreferences: { offscreen: true }`), loads a tiny data-URL HTML page per state, and captures the `webContents` `'paint'` event's image directly — a normal `show:true` window positioned off-screen was tried first and reliably produced valid-but-blank (0-byte) captures on this Windows machine, so offscreen rendering is required, not just a nicety. Output: `resources/tray/tray-{idle,running,paused}.png`, wired into `updateTray()` in `src/main/index.ts` via `tray.setImage(...)` keyed on `snapshot.state`. These are committed, reproducible final assets (unlike the Session 1 placeholder sounds) — re-run the script if the tray art ever needs to change.
+- **Verification**: `bun run typecheck`, `lint`, and `build` all clean. UI verified by launching the built app with a throwaway Playwright `_electron` script (not committed) — a pre-existing Appwrite session on this dev machine let it land straight on the authenticated Timer screen, so the full flow (idle → Insights drawer → Settings drawer → start → pause → resume → skip into short break) was screenshotted and visually checked against the brief, confirming zero console/page errors and the full-window break-state inversion working as designed. Login/signup screens were **not** screenshotted this session — doing so required logging out of the real persisted session, which felt unnecessary to force just for a screenshot given `AuthScreen.tsx` reuses the exact same token classes already confirmed correct everywhere else.
+
+### In Scope
+
+- All 16 screens/states from `Flowstate Design Brief.dc.html`: login, signup, loading, greeting header, timer idle/running/paused/short-break/long-break, quote banner, settings drawer, insights drawer (stats + heatmap + focus-hour), notification copy tone, and tray icon states.
+- The two IA changes and the full-window break recolor, all confirmed with the user via `AskUserQuestion` before implementation (see the approved plan for the exact question wording).
+
+### Out of Scope
+
+- Automated tests — still none written; same gap flagged in Session 1, unchanged this session.
+- Live-screenshotting the Login/Signup screens (see Verification note above) — visually unverified beyond code review, though built on the same confirmed-working token system.
+- A live-updating tray icon progress ring — the "running" tray state is one fixed partial-arc frame (matches the brief's single static exemplar), not a per-tick animation.
+- macOS/Linux packaging — unchanged from Session 1, still untested.
+
+### Breaking Changes
+
+- Settings is no longer a centered modal — it's a right-side drawer, and no longer auto-closes after Save (stays open showing "Saved" until manually closed).
+- Stats/Heatmap/Focus-hour are no longer always visible below the timer — they're now behind the new insights icon in the header.
+- Log out moved from a fixed top-left corner link into the bottom of the Settings drawer.
+- `Timer` gained a new required prop, `todaySessionsCompleted` (for the idle screen's "Today" meta row) — any other caller would need updating, though there is only the one in `App.tsx`.
+
+### Notes for Future Sessions
+
+- **`docs/DESIGN_PROMPT.md`'s "hasn't been acted on yet" note from Session 1 is now resolved** — the design pass came back and this session implemented it in full.
+- **Token source of truth**: `src/renderer/src/lib/theme.ts`'s `PHASE_THEME` and `src/renderer/src/assets/main.css`'s `@theme`/dark-media-query block. If the design ever changes again, start there — don't hand-roll new one-off colors in components.
+- **`resources/tray/*.png` are generated, committed assets**, not hand-drawn — regenerate via `bun run generate-tray-icons` if `scripts/generate-tray-icons.mjs`'s SVG definitions ever change. The offscreen-rendering requirement (see How We Built It) is the one non-obvious gotcha in that script if it's ever touched.
+- **Login/Signup screens need a real visual pass-through next session** — they were restyled with the same token system as everything else (high confidence) but never actually screenshotted, unlike every other screen. If a future session has a way to test against a logged-out state (e.g., a disposable test account), that'd close the loop.
+- **No automated tests still.** Now two sessions running without Vitest/Playwright coverage against `CLAUDE.md`'s own Definition of Done — worth flagging again if a third session lands here without addressing it.
+
+---
+
+## Session 3 — Verify Session Logging Reaches Appwrite
+
+**Date & Time (IST):** 2026-08-06 17:00 IST
+**Status:** Completed
+
+### What We Built
+
+Nothing functional — user reported seeing no rows in the Appwrite `sessions` table and asked whether the app was actually writing to it. Confirmed the write path was already correct and working; the real cause was that no phase had actually completed yet in their testing (Start/Pause alone never call `logSession` — only a natural phase finish or Skip does, see `useTimer.ts`'s `onSessionComplete` handler). Added a temporary `console.log('Session logged:', row.$id)` in `src/renderer/src/lib/sessions.ts` on top of the existing `console.error` failure path, had the user hit Skip once, confirmed a row (`6a744b32002252ec3728`) was created successfully, then removed the temporary log once confirmed.
+
+### How We Built It
+
+- No new code. Walked the existing write path (`Timer` Skip → main-process `PomodoroTimer.skip()` → `session-complete` IPC event → `useTimer.ts`'s handler → `logSession()` in `sessions.ts` → `tablesDB.createRow`) and confirmed against `appwrite.json` that `sessions` is the only table the app needs — settings live in Appwrite user Preferences, not a table, so there was never a "missing second table" possibility.
+- Debug aid was temporary by design: added, used once to get a real user-side confirmation, then reverted in the same session. `sessions.ts` is back to its original error-only logging.
+
+### In Scope
+
+- Diagnosing and confirming the session-logging write path works end-to-end against the user's real Appwrite project.
+
+### Out of Scope
+
+- Nothing else touched this session.
+
+### Breaking Changes
+
+- NONE.
+
+### Notes for Future Sessions
+
+- **Session logging is confirmed working end-to-end** (`sessions.ts` → live Appwrite `sessions` table) as of this session — row `6a744b32002252ec3728` is real evidence, not just code review.
+- **Reminder for future debugging**: `logSession()` only fires on phase *completion* (natural finish or Skip), never on Start/Pause/Resume. If a future report says "nothing's being logged," check whether a phase actually completed before assuming the write path is broken.
+- Everything else noted at the end of Session 2 (Login/Signup screens unverified live, no automated tests) still stands — unchanged this session.
+
+---
+
+## Session 4 — Profile Drawer
+
+**Date & Time (IST):** 2026-08-06 18:15 IST
+**Status:** Completed
+
+### What We Built
+
+New Profile drawer, matching the Settings/Insights drawer pattern. Header now has a third icon button (person icon) next to Insights and Settings that opens it. Shows a Dicebear "clay" avatar (seeded from first + last name, gentle floating CSS animation), first name, last name, email, and a Log out action.
+
+### How We Built It
+
+- `src/renderer/src/components/icons.tsx` — added `UserIcon` (24x24, same stroke convention as the rest of the set).
+- `src/renderer/src/components/ProfileDrawer.tsx` (new) — same right-side slide-in drawer chrome as `SettingsPanel`/`InsightsDrawer` (dimmed backdrop, `w-90` panel, close via `CloseIcon`). Avatar `<img>` points at `https://api.dicebear.com/9.x/clay/svg?seed=<first+last>`, wrapped with a new `fsFloat` keyframe (`main.css`) for a slow up/down float — the "animation" the user asked for, since Dicebear's SVGs are static. First/last name and email are read-only display rows (derived from Appwrite's `account.get()` — there's no separate first/last name field in Appwrite, so `user.name` is split on the first space same as the existing `Greeting` component already did).
+- `src/renderer/index.html` — CSP `img-src` extended with `https://api.dicebear.com` (avatar is a remote `<img src>`, not a `connect-src`/fetch call, so only `img-src` needed updating).
+- **Log out moved out of Settings, into Profile.** `SettingsPanel` lost its `onLogout` prop and bottom-of-drawer link — Settings is now purely timer preferences, Profile owns the account-level action. This is a deliberate IA cleanup, not something explicitly requested, but leaving Log out duplicated in two drawers made no sense once Profile existed as the identity/account surface.
+- `App.tsx` — new `profileOpen` state, header button order is now Profile → Insights → Settings (profile placed first since it's the user's own identity, insights/settings unchanged relative to each other).
+
+### In Scope
+
+- Profile drawer: avatar, first name, last name, email, log out.
+- Moving Log out from Settings to Profile.
+
+### Out of Scope
+
+- Editing name/email from the drawer — user asked to *show* first name, last name, email, not edit them, so these are read-only. Appwrite's `account.name` is also a single field (no native first/last split), so editing would need its own name-splitting/round-trip design — deferred until actually asked for.
+- Uploading a custom profile picture — brief explicitly asked for Dicebear-generated avatars, not user uploads.
+
+### Breaking Changes
+
+- `SettingsPanel` no longer accepts `onLogout` — any other caller would need updating (there is only the one, in `App.tsx`, already updated).
+
+### Notes for Future Sessions
+
+- **Could not exercise the Profile drawer end-to-end via automated Playwright this session.** The project's own `node_modules/electron.exe` (used for `_electron.launch` against `out/`) resolves a different `userData` path than the installed `Flowstate.exe` the user has open (default userData is keyed off `app.getName()`, i.e. package.json `name`, not the installer's `productName` — the two diverge). So the automated launch hit the login screen (confirmed rendering cleanly, zero console errors, `ELECTRON_RUN_AS_NODE` gotcha applied as usual) but had no session to reach Profile with. Typecheck/lint/build are clean and the wiring was reviewed by hand; the user should check the new person icon live via a rebuild/restart to see it rendered.
+- Dicebear calls a live external API (`api.dicebear.com`) — same "external service, fail gracefully" caution as the quotes API (`lib/quotes.ts`) applies here too, though unlike quotes this is just a static `<img src>` so a failed load just shows a broken image, not a crash. Worth a local fallback (initials avatar, etc.) only if this becomes a real complaint.
+- Everything else noted at the end of Session 3 (Login/Signup screens still not automated-E2E-verified, no automated tests beyond typecheck/lint/build) still stands.

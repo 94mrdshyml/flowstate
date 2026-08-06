@@ -1,0 +1,66 @@
+{
+  "projectId": "6a7394c200359b64170d",
+  "projectName": "Flowstate",
+  "endpoint": "https://sgp.cloud.appwrite.io/v1",
+  "tablesDB": [
+    {
+      "$id": "flowstate",
+      "name": "Flowstate",
+      "enabled": true
+    }
+  ],
+  "tables": [
+    {
+      "$id": "sessions",
+      "$permissions": ["create(\"users\")"],
+      "databaseId": "flowstate",
+      "name": "sessions",
+      "enabled": true,
+      "rowSecurity": true,
+      "columns": [
+        {
+          "key": "userId",
+          "type": "string",
+          "required": true,
+          "size": 255
+        },
+        {
+          "key": "phase",
+          "type": "string",
+          "required": true,
+          "size": 20,
+          "format": "enum",
+          "elements": ["work", "short_break", "long_break"]
+        },
+        {
+          "key": "startedAt",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "key": "endedAt",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "key": "durationSeconds",
+          "type": "integer",
+          "required": true,
+          "min": 0
+        },
+        {
+          "key": "completed",
+          "type": "boolean",
+          "required": true
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_user_started",
+          "type": "key",
+          "columns": ["userId", "startedAt"]
+        }
+      ]
+    }
+  ]
+}
