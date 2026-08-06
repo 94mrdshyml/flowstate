@@ -1,7 +1,7 @@
-import { CloseIcon } from './icons'
+import { ArrowLeftIcon } from './icons'
 import type { UpdateState, UpdateStatus } from '../../../preload/types'
 
-interface ProfileDrawerProps {
+interface ProfilePageProps {
   firstName: string
   lastName: string
   email: string
@@ -9,7 +9,7 @@ interface ProfileDrawerProps {
   updateStatus: UpdateStatus
   onCheckForUpdates: () => void
   onInstallUpdate: () => void
-  onClose: () => void
+  onBack: () => void
   onLogout: () => void
 }
 
@@ -26,7 +26,7 @@ const UPDATE_STATUS_LABEL: Record<UpdateState, string> = {
 const CHECKING_STATES: UpdateState[] = ['checking', 'available', 'downloading']
 const NOTES_STATES: UpdateState[] = ['available', 'downloading', 'downloaded']
 
-function ProfileDrawer({
+function ProfilePage({
   firstName,
   lastName,
   email,
@@ -34,23 +34,24 @@ function ProfileDrawer({
   updateStatus,
   onCheckForUpdates,
   onInstallUpdate,
-  onClose,
+  onBack,
   onLogout
-}: ProfileDrawerProps): React.JSX.Element {
-  const avatarUrl = `https://api.dicebear.com/10.x/clay/svg?seed=${encodeURIComponent(`${firstName} ${lastName}`)}`
+}: ProfilePageProps): React.JSX.Element {
+  const avatarUrl = `https://api.dicebear.com/10.x/glyphs/svg?seed=${encodeURIComponent(`${firstName} ${lastName}`)}`
 
   return (
-    <div className="fixed inset-0 z-10 bg-fs-text/40" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="absolute inset-y-0 right-0 flex w-90 flex-col gap-6 border-l border-fs-divider bg-fs-surface px-7.5 py-8 text-fs-text"
+    <div className="flex flex-1 flex-col overflow-y-auto bg-fs-surface px-9 py-8 text-fs-text">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-6 flex w-fit items-center gap-1.5 text-sm text-fs-muted hover:opacity-70"
       >
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading text-[22px] font-extrabold">Profile</h2>
-          <button type="button" onClick={onClose} aria-label="Close profile">
-            <CloseIcon className="h-4.5 w-4.5" />
-          </button>
-        </div>
+        <ArrowLeftIcon className="h-4 w-4" />
+        Back
+      </button>
+
+      <div className="mx-auto flex w-full max-w-md flex-col gap-6">
+        <h2 className="font-heading text-[22px] font-extrabold">Profile</h2>
 
         <div className="flex flex-col items-center gap-3 border-b border-fs-divider pb-6">
           <img src={avatarUrl} alt="" className="h-24 w-24 rounded-full bg-fs-bg" />
@@ -113,7 +114,7 @@ function ProfileDrawer({
         <button
           type="button"
           onClick={onLogout}
-          className="mt-auto w-fit text-xs text-fs-muted hover:text-fs-text"
+          className="w-fit text-xs text-fs-muted hover:text-fs-text"
         >
           Log out
         </button>
@@ -122,4 +123,4 @@ function ProfileDrawer({
   )
 }
 
-export default ProfileDrawer
+export default ProfilePage

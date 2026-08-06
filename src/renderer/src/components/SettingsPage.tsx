@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { CheckIcon, CloseIcon } from './icons'
+import { ArrowLeftIcon, CheckIcon } from './icons'
 import type { TimerSettings } from '../../../preload/types'
 
-interface SettingsPanelProps {
+interface SettingsPageProps {
   settings: TimerSettings
   onSave: (settings: TimerSettings) => Promise<void>
-  onClose: () => void
+  onBack: () => void
 }
 
-function SettingsPanel({ settings, onSave, onClose }: SettingsPanelProps): React.JSX.Element {
+function SettingsPage({ settings, onSave, onBack }: SettingsPageProps): React.JSX.Element {
   const [workMinutes, setWorkMinutes] = useState(settings.workMinutes)
   const [shortBreakMinutes, setShortBreakMinutes] = useState(settings.shortBreakMinutes)
   const [longBreakMinutes, setLongBreakMinutes] = useState(settings.longBreakMinutes)
@@ -34,18 +34,18 @@ function SettingsPanel({ settings, onSave, onClose }: SettingsPanelProps): React
     'w-20 bg-fs-surface border border-fs-divider px-2 py-1 text-sm text-fs-text outline-none focus:border-fs-accent'
 
   return (
-    <div className="fixed inset-0 z-10 bg-fs-text/40" onClick={onClose}>
-      <form
-        onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
-        className="absolute inset-y-0 right-0 flex w-90 flex-col gap-4.5 border-l border-fs-divider bg-fs-surface px-7.5 py-8 text-fs-text"
+    <div className="flex flex-1 flex-col overflow-y-auto bg-fs-surface px-9 py-8 text-fs-text">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-6 flex w-fit items-center gap-1.5 text-sm text-fs-muted hover:opacity-70"
       >
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading text-[22px] font-extrabold">Settings</h2>
-          <button type="button" onClick={onClose} aria-label="Close settings">
-            <CloseIcon className="h-4.5 w-4.5" />
-          </button>
-        </div>
+        <ArrowLeftIcon className="h-4 w-4" />
+        Back
+      </button>
+
+      <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-md flex-col gap-4.5">
+        <h2 className="font-heading text-[22px] font-extrabold">Settings</h2>
 
         <label className="flex flex-col gap-1.5 text-xs text-fs-muted">
           Work duration
@@ -100,7 +100,7 @@ function SettingsPanel({ settings, onSave, onClose }: SettingsPanelProps): React
         <button
           type="submit"
           disabled={saving}
-          className="h-11 bg-fs-accent font-heading text-sm font-extrabold text-fs-accent-text disabled:opacity-45"
+          className="h-11 w-fit bg-fs-accent px-6 font-heading text-sm font-extrabold text-fs-accent-text disabled:opacity-45"
         >
           Save
         </button>
@@ -115,4 +115,4 @@ function SettingsPanel({ settings, onSave, onClose }: SettingsPanelProps): React
   )
 }
 
-export default SettingsPanel
+export default SettingsPage

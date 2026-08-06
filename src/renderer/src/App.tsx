@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import AuthScreen from './components/AuthScreen'
 import Greeting from './components/Greeting'
-import InsightsDrawer from './components/InsightsDrawer'
-import ProfileDrawer from './components/ProfileDrawer'
+import InsightsPage from './components/InsightsPage'
+import ProfilePage from './components/ProfilePage'
 import QuoteBanner from './components/QuoteBanner'
-import SettingsPanel from './components/SettingsPanel'
+import SettingsPage from './components/SettingsPage'
 import Timer from './components/Timer'
-import { BarChartIcon, GearIcon, UserIcon } from './components/icons'
+import { BarChartIcon, GearIcon, HomeIcon, UserIcon } from './components/icons'
 import { useAppUpdate } from './hooks/useAppUpdate'
 import { useAuth } from './hooks/useAuth'
 import { useQuotes } from './hooks/useQuotes'
@@ -17,6 +17,8 @@ import { useTodayStats } from './hooks/useTodayStats'
 import { PHASE_THEME } from './lib/theme'
 import { mergeSettings } from './lib/settings'
 import type { TimerSettings } from '../../preload/types'
+
+type View = 'home' | 'profile' | 'insights' | 'settings'
 
 function App(): React.JSX.Element {
   const { user, loading, login, signup, logout, updatePrefs } = useAuth()
@@ -32,9 +34,7 @@ function App(): React.JSX.Element {
   const todayStats = useTodayStats(user?.$id)
   const { dayCounts, hourCounts } = useSessionHistory(user?.$id)
   const update = useAppUpdate()
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [insightsOpen, setInsightsOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
+  const [view, setView] = useState<View>('home')
 
   useEffect(() => {
     if (!user) return
@@ -67,73 +67,74 @@ function App(): React.JSX.Element {
 
   const theme = PHASE_THEME[snapshot?.phase ?? 'work']
 
+  const navButtonClass = (active: boolean): string =>
+    `flex h-9 w-9 items-center justify-center border hover:opacity-70 ${
+      active
+        ? `${theme.ring} ${theme.ringText} border-transparent`
+        : `${theme.divider} ${theme.text}`
+    }`
+
   return (
     <div className={`flex h-screen w-screen flex-col overflow-hidden ${theme.bg} ${theme.text}`}>
       <div className={`flex items-center justify-between border-b px-9 py-5.5 ${theme.divider}`}>
         <Greeting name={user.name.split(' ')[0]} theme={theme} />
         <div className="flex gap-2">
           <button
-            onClick={() => setProfileOpen(true)}
+            onClick={() => setView('home')}
+            aria-label="Home"
+            className={navButtonClass(view === 'home')}
+          >
+            <HomeIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setView('profile')}
             aria-label="Profile"
-            className={`flex h-9 w-9 items-center justify-center border hover:opacity-70 ${theme.divider} ${theme.text}`}
+            className={navButtonClass(view === 'profile')}
           >
             <UserIcon className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setInsightsOpen(true)}
+            onClick={() => setView('insights')}
             aria-label="Insights"
-            className={`flex h-9 w-9 items-center justify-center border hover:opacity-70 ${theme.divider} ${theme.text}`}
+            className={navButtonClass(view === 'insights')}
           >
             <BarChartIcon className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => setView('settings')}
             aria-label="Settings"
-            className={`flex h-9 w-9 items-center justify-center border hover:opacity-70 ${theme.divider} ${theme.text}`}
+            className={navButtonClass(view === 'settings')}
           >
             <GearIcon className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {snapshot && (
-        <Timer
-          snapshot={snapshot}
-          todaySessionsCompleted={todayStats.sessionsCompleted}
-          onStart={start}
-          onPause={pause}
-          onResume={resume}
-          onSkip={skip}
-          onReset={reset}
-          tasks={tasks}
-          activeTaskId={activeTaskId}
-          onSetActiveTask={setActiveTaskId}
-          onAddTask={addTask}
-          onToggleTask={toggleTask}
-          onRemoveTask={removeTask}
-        />
+      {view === 'home' && (
+        <>
+          {snapshot && (
+            <Timer
+              snapshot={snapshot}
+              todaySessionsCompleted={todayStats.sessionsCompleted}
+              onStart={start}
+              onPause={pause}
+              onResume={resume}
+              onSkip={skip}
+              onReset={reset}
+              tasks={tasks}
+              activeTaskId={activeTaskId}
+              onSetActiveTask={setActiveTaskId}
+              onAddTask={addTask}
+              onToggleTask={toggleTask}
+              onRemoveTask={removeTask}
+            />
+          )}
+          <QuoteBanner quote={quote} phase={snapshot?.phase ?? 'work'} theme={theme} />
+        </>
       )}
 
-      <QuoteBanner quote={quote} phase={snapshot?.phase ?? 'work'} theme={theme} />
-
-      {settingsOpen && (
-        <SettingsPanel
-          settings={mergeSettings(user.prefs)}
-          onSave={handleSaveSettings}
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
-      {insightsOpen && (
-        <InsightsDrawer
-          sessionsCompleted={todayStats.sessionsCompleted}
-          focusedMinutes={todayStats.focusedMinutes}
-          dayCounts={dayCounts}
-          hourCounts={hourCounts}
-          onClose={() => setInsightsOpen(false)}
-        />
-      )}
-      {profileOpen && (
-        <ProfileDrawer
+      {view === 'profile' && (
+        <ProfilePage
           firstName={user.name.split(' ')[0] ?? ''}
           lastName={user.name.split(' ').slice(1).join(' ')}
           email={user.email}
@@ -141,8 +142,24 @@ function App(): React.JSX.Element {
           updateStatus={update.status}
           onCheckForUpdates={update.checkForUpdates}
           onInstallUpdate={update.installUpdate}
-          onClose={() => setProfileOpen(false)}
+          onBack={() => setView('home')}
           onLogout={logout}
+        />
+      )}
+      {view === 'insights' && (
+        <InsightsPage
+          sessionsCompleted={todayStats.sessionsCompleted}
+          focusedMinutes={todayStats.focusedMinutes}
+          dayCounts={dayCounts}
+          hourCounts={hourCounts}
+          onBack={() => setView('home')}
+        />
+      )}
+      {view === 'settings' && (
+        <SettingsPage
+          settings={mergeSettings(user.prefs)}
+          onSave={handleSaveSettings}
+          onBack={() => setView('home')}
         />
       )}
     </div>
