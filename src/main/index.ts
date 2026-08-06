@@ -115,13 +115,35 @@ function setUpdateStatus(status: UpdateStatus): void {
   mainWindow?.webContents.send('app:update-status', status)
 }
 
+// electron-updater's GitHubProvider reads release notes off GitHub's Atom feed, which
+// serves the release body pre-rendered to HTML — never raw markdown — regardless of how
+// the notes were authored. Strip that down to plain text so the UI can keep rendering it
+// as plain JSX text (no dangerouslySetInnerHTML, no HTML-sanitizing dependency needed).
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<li[^>]*>/gi, '\n- ')
+    .replace(/<\/li>/gi, '')
+    .replace(/<\/(p|div)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    .trim()
+}
+
 function normalizeReleaseNotes(notes: unknown): string | undefined {
   if (!notes) return undefined
-  if (typeof notes === 'string') return notes || undefined
+  if (typeof notes === 'string') return htmlToPlainText(notes) || undefined
   if (Array.isArray(notes)) {
     const joined = notes
       .map((entry: { note?: string | null }) => entry.note)
       .filter((note): note is string => Boolean(note))
+      .map(htmlToPlainText)
       .join('\n\n')
     return joined || undefined
   }

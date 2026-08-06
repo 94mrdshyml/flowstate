@@ -485,3 +485,49 @@ User feedback: the 60/40 timer/tasks split from Session 10 didn't look right. Ad
 ### Notes for Future Sessions
 
 - Nothing new — same visual-verification limitation as prior sessions applies (not re-documented here, see Session 10/11).
+
+---
+
+## Session 13 — Update Notes HTML Fix + Nav Pivot to Persistent Side Panel
+
+**Date & Time (IST):** 2026-08-07 01:30 IST
+**Status:** Completed
+
+### What We Built
+
+Started as a bug-fix session: user screenshotted the Profile page's update panel showing literal `<ul><li>...</li></ul>` text instead of a rendered list, with the "Restart & install" button barely visible near the bottom. Mid-fix, the user also decided Session 11's full-page navigation (Profile/Insights/Settings replacing the whole timer view) "is not looking good" and asked for a different model instead: keep the timer always visible on the left (65%), and have the header's Profile/Insights/Settings/Home buttons swap what's shown in the right-hand 35% panel — no back button needed, since the same header buttons serve as navigation both ways. Both pieces shipped together as one release, since the bug-fix version was never independently tagged/published before the pivot arrived.
+
+### How We Built It
+
+**Bug fixes (both applied before the pivot, carried forward unchanged):**
+- **Root cause of the HTML-tags bug**: `electron-updater`'s `GitHubProvider` doesn't read the raw markdown `body` off the GitHub REST API — it reads release notes from GitHub's **Atom feed** for the repo, and that feed always serves the release body pre-rendered to HTML (`<content type="html">`), regardless of how the notes were authored via `gh release edit`. So `info.releaseNotes` was never plain text to begin with; Session 10's `normalizeReleaseNotes()` just passed it straight through, and the UI rendered it as escaped JSX text — showing the tags literally instead of a list. Fixed with a new `htmlToPlainText()` helper in `src/main/index.ts` — regex-based, converts `<li>` to a leading `- `, drops closing tags, strips everything else, decodes the handful of entities GitHub's renderer actually uses, and collapses the newlines the source HTML already contains between elements down to one per line (verified against a realistic sample via a standalone `node -e` check before wiring it in — the source HTML has its own embedded newlines that would otherwise double up with the ones the regex inserts). Deliberately still a plain-text pipeline, not `dangerouslySetInnerHTML` + a sanitizer.
+- **Root cause of the button-visibility bug**: same `min-h-0`-missing pattern documented in Session 10's task-list bug, just on a different component (the three Session 11 page components). Fixed at the time by adding `min-h-0` to their root wrapper — moot now that those components no longer exist post-pivot (see below), but the pattern held again, which matters for the note at the bottom of this entry.
+
+**Nav pivot:**
+- `Timer.tsx` cut down to *only* the left-side countdown/controls — the grid wrapper, the right-hand rail (Phase/Session/Today/Next), and the task list all came out of it.
+- New `HomePanel.tsx` — got the extracted rail content (`MetaRow`, `MetaRowPair`, `TaskList`, moved verbatim) plus the wrapping logic that used to live in `Timer.tsx`. This is what renders in the right panel when `view === 'home'`.
+- Session 11's `ProfilePage.tsx`/`SettingsPage.tsx`/`InsightsPage.tsx` (full-page, back-button versions) deleted. In their place: `ProfilePanel.tsx`, `SettingsPanel.tsx`, `InsightsPanel.tsx` — adapted from the **original pre-Session-11 drawer components** (`git show` against the commit before their deletion), not from the Session 11 page versions, since the drawers' narrow-column styling (built for a 360px `w-90` panel) was already the right fit for a 35%-of-960px column — closer to reusing proven markup than redesigning from the full-page layout. Changes from the originals: dropped the `fixed inset-0` backdrop, the `absolute inset-y-0 right-0 w-90` positioning, and the close button (no overlay, no dismiss needed — it's a permanent slot now); kept everything else (neutral `bg-fs-surface`/`bg-fs-bg` tokens, field styling, spacing) essentially unchanged.
+- `App.tsx` now renders one grid (`Timer` | active panel) unconditionally whenever a snapshot exists, instead of switching between "home content" and "a full-page component." The right column hides only in one specific case — `view === 'home' && phase === 'long_break'` — preserving the celebratory full-width "cycle complete" screen for the home view specifically; navigating to Profile/Insights/Settings during a long break still shows the two-column layout, since the full-width treatment was always a home-view aesthetic choice, not a rule about long breaks generally.
+- `QuoteBanner` now renders unconditionally at the bottom regardless of `view` (previously only shown on `view === 'home'` in the Session 11 model) — the timer keeps running no matter which panel is showing, so the motivational strip stays put too.
+- No back buttons anywhere — the header's four buttons (Home/Profile/Insights/Settings) are the only navigation, doubling as both "go to" and "currently showing" (active-state highlighting from Session 11 carries over unchanged).
+- **Version**: `2.2.1` → `2.3.0` (treated as minor — a real navigation-model change, not just a fix, same reasoning as Session 11's own bump).
+
+### In Scope
+
+- Release notes render as clean plain text. Navigation reworked to a persistent side panel; full-page Profile/Insights/Settings and their back buttons are gone.
+
+### Out of Scope
+
+- Rich-text/markdown rendering of release notes — still plain text by design.
+- Any change to what Profile/Insights/Settings actually contain — same fields/content as always, just re-homed into the narrower panel.
+
+### Breaking Changes
+
+- `Timer` no longer accepts `todaySessionsCompleted` or any task-related props — those moved to `HomePanel`. Only caller is `App.tsx`, already updated.
+- `ProfilePanel`/`SettingsPanel`/`InsightsPanel` don't take `onBack` (or `onClose`) — nothing to close, there's no overlay.
+
+### Notes for Future Sessions
+
+- **This is now the second and third time a "missing `min-h-0` on a flex item with `overflow-y-auto`" bug has shipped** (Session 9/10's task list, then the Session 11 page components fixed earlier in this same session). The Session 11 components no longer exist post-pivot, but `HomePanel.tsx`'s `TaskList` and all three new `*Panel.tsx` components carry `min-h-0` from the start this time — applied proactively rather than discovered again the hard way. Keep treating it as a standing checklist item for any new scrollable region, per Session 10's original note.
+- The nav model can still change again — this is the third iteration (drawers → full pages → persistent side panel) in three sessions. If it moves again, the `View` union and per-view conditionals in `App.tsx` remain the extension point; no routing library, still not warranted at this size.
+- Same recurring visual-verification gap — couldn't screenshot the real running app for this pivot either. Code-reviewed only; the grid math (`view !== 'home' || phase !== 'long_break'` gating the right column) is worth a manual click-through, especially the long-break case.

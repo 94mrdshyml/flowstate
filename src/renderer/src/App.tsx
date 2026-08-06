@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import AuthScreen from './components/AuthScreen'
 import Greeting from './components/Greeting'
-import InsightsPage from './components/InsightsPage'
-import ProfilePage from './components/ProfilePage'
+import HomePanel from './components/HomePanel'
+import InsightsPanel from './components/InsightsPanel'
+import ProfilePanel from './components/ProfilePanel'
 import QuoteBanner from './components/QuoteBanner'
-import SettingsPage from './components/SettingsPage'
+import SettingsPanel from './components/SettingsPanel'
 import Timer from './components/Timer'
 import { BarChartIcon, GearIcon, HomeIcon, UserIcon } from './components/icons'
 import { useAppUpdate } from './hooks/useAppUpdate'
@@ -110,58 +111,64 @@ function App(): React.JSX.Element {
         </div>
       </div>
 
-      {view === 'home' && (
-        <>
-          {snapshot && (
-            <Timer
-              snapshot={snapshot}
-              todaySessionsCompleted={todayStats.sessionsCompleted}
-              onStart={start}
-              onPause={pause}
-              onResume={resume}
-              onSkip={skip}
-              onReset={reset}
-              tasks={tasks}
-              activeTaskId={activeTaskId}
-              onSetActiveTask={setActiveTaskId}
-              onAddTask={addTask}
-              onToggleTask={toggleTask}
-              onRemoveTask={removeTask}
-            />
+      {snapshot && (
+        <div
+          className={`grid min-h-0 flex-1 ${
+            view !== 'home' || snapshot.phase !== 'long_break' ? 'grid-cols-[13fr_7fr]' : ''
+          }`}
+        >
+          <Timer
+            snapshot={snapshot}
+            onStart={start}
+            onPause={pause}
+            onResume={resume}
+            onSkip={skip}
+            onReset={reset}
+          />
+
+          {(view !== 'home' || snapshot.phase !== 'long_break') && (
+            <>
+              {view === 'home' && (
+                <HomePanel
+                  snapshot={snapshot}
+                  todaySessionsCompleted={todayStats.sessionsCompleted}
+                  tasks={tasks}
+                  activeTaskId={activeTaskId}
+                  onSetActiveTask={setActiveTaskId}
+                  onAddTask={addTask}
+                  onToggleTask={toggleTask}
+                  onRemoveTask={removeTask}
+                />
+              )}
+              {view === 'profile' && (
+                <ProfilePanel
+                  firstName={user.name.split(' ')[0] ?? ''}
+                  lastName={user.name.split(' ').slice(1).join(' ')}
+                  email={user.email}
+                  appVersion={update.appVersion}
+                  updateStatus={update.status}
+                  onCheckForUpdates={update.checkForUpdates}
+                  onInstallUpdate={update.installUpdate}
+                  onLogout={logout}
+                />
+              )}
+              {view === 'insights' && (
+                <InsightsPanel
+                  sessionsCompleted={todayStats.sessionsCompleted}
+                  focusedMinutes={todayStats.focusedMinutes}
+                  dayCounts={dayCounts}
+                  hourCounts={hourCounts}
+                />
+              )}
+              {view === 'settings' && (
+                <SettingsPanel settings={mergeSettings(user.prefs)} onSave={handleSaveSettings} />
+              )}
+            </>
           )}
-          <QuoteBanner quote={quote} phase={snapshot?.phase ?? 'work'} theme={theme} />
-        </>
+        </div>
       )}
 
-      {view === 'profile' && (
-        <ProfilePage
-          firstName={user.name.split(' ')[0] ?? ''}
-          lastName={user.name.split(' ').slice(1).join(' ')}
-          email={user.email}
-          appVersion={update.appVersion}
-          updateStatus={update.status}
-          onCheckForUpdates={update.checkForUpdates}
-          onInstallUpdate={update.installUpdate}
-          onBack={() => setView('home')}
-          onLogout={logout}
-        />
-      )}
-      {view === 'insights' && (
-        <InsightsPage
-          sessionsCompleted={todayStats.sessionsCompleted}
-          focusedMinutes={todayStats.focusedMinutes}
-          dayCounts={dayCounts}
-          hourCounts={hourCounts}
-          onBack={() => setView('home')}
-        />
-      )}
-      {view === 'settings' && (
-        <SettingsPage
-          settings={mergeSettings(user.prefs)}
-          onSave={handleSaveSettings}
-          onBack={() => setView('home')}
-        />
-      )}
+      <QuoteBanner quote={quote} phase={snapshot?.phase ?? 'work'} theme={theme} />
     </div>
   )
 }
