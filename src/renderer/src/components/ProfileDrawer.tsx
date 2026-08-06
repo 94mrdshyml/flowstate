@@ -15,7 +15,7 @@ function ProfileDrawer({
   onClose,
   onLogout
 }: ProfileDrawerProps): React.JSX.Element {
-  const avatarUrl = `https://api.dicebear.com/9.x/clay/svg?seed=${encodeURIComponent(`${firstName} ${lastName}`)}`
+  const avatarUrl = `https://api.dicebear.com/10.x/clay/svg?seed=${encodeURIComponent(`${firstName} ${lastName}`)}`
 
   return (
     <div className="fixed inset-0 z-10 bg-fs-text/40" onClick={onClose}>
